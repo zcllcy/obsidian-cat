@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wiki Cat</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="rail" aria-label="Wiki Cat navigation">
+        <div class="mark" aria-hidden="true">
+          <span class="mark-ear left"></span>
+          <span class="mark-ear right"></span>
+          <span class="mark-eye left"></span>
+          <span class="mark-eye right"></span>
+        </div>
+        <nav class="nav">
+          <button class="nav-item active" type="button" data-view="setup">Setup</button>
+          <button class="nav-item" type="button" data-view="feed">Feed</button>
+          <button class="nav-item" type="button" data-view="ask">Ask</button>
+          <button class="nav-item" type="button" data-view="settings">Settings</button>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="hero">
+          <div>
+            <p class="eyebrow">Wiki Cat</p>
+            <h1>A tiny desktop pet for an LLM-maintained Obsidian wiki.</h1>
+          </div>
+          <dl class="status-strip">
+            <div><dt>Mode</dt><dd id="mode">-</dd></div>
+            <div><dt>Queue</dt><dd id="pending">0</dd></div>
+            <div><dt>Processed</dt><dd id="processed">0</dd></div>
+          </dl>
+        </header>
+
+        <section class="view active" id="view-setup">
+          <div class="split">
+            <section class="panel intro-panel">
+              <p class="eyebrow">First run</p>
+              <h2>Design the wiki before creating it.</h2>
+              <p>Pick a vault folder, describe what kind of knowledge base you want, ask your model for a proposed architecture, edit the draft, then create the Obsidian-ready wiki.</p>
+              <p class="message" id="message">Starting...</p>
+            </section>
+
+            <form class="panel form-grid" id="onboardingForm">
+              <label class="wide">
+                Vault folder
+                <input id="setupVaultRoot" name="setupVaultRoot" placeholder="C:\Research\wiki-cat-vault" />
+              </label>
+              <label>
+                Default language
+                <select id="setupLanguage" name="setupLanguage">
+                  <option value="en-US">English</option>
+                  <option value="zh-CN">Chinese</option>
+                </select>
+              </label>
+              <label class="wide">
+                What should this wiki manage?
+                <textarea id="setupRequirements" rows="5" placeholder="Example: Papers, notes, and web clippings about AI agents, polymer thermal interfaces, phonons, methods, evidence chains, and open research questions."></textarea>
+              </label>
+              <div class="button-row wide">
+                <button id="designVault" type="button">Generate architecture</button>
+                <button id="createVault" class="secondary" type="submit">Create wiki</button>
+              </div>
+              <label class="wide">
+                Architecture draft
+                <textarea id="architectureDraft" class="code" rows="12" spellcheck="false"></textarea>
+              </label>
+            </form>
+          </div>
+        </section>
+
+        <section class="view" id="view-feed">
+          <div class="workbench">
+            <section class="panel feed-card">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Feed</p>
+                  <h2>Drop sources onto the cat.</h2>
+                </div>
+                <button id="runNow" class="secondary" type="button">Run queue</button>
+              </div>
+              <div class="drop-zone" id="dropZone" aria-label="Drop files onto Wiki Cat">
+                <div class="cat" id="cat" aria-hidden="true">
+                  <div class="ear left"></div>
+                  <div class="ear right"></div>
+                  <div class="head">
+                    <div class="eye left"></div>
+                    <div class="eye right"></div>
+                    <div class="muzzle"></div>
+                    <div class="mouth"></div>
+                    <div class="whisker w1"></div>
+                    <div class="whisker w2"></div>
+                    <div class="whisker w3"></div>
+                    <div class="whisker w4"></div>
+                  </div>
+                  <div class="body"></div>
+                  <div class="tail"></div>
+                </div>
+                <div class="drop-copy">
+                  <strong>PDFs, Markdown, text, links, or copied conversations.</strong>
+                  <span>Wiki Cat queues each source, parses it, asks your model to curate it, then writes durable notes into your Obsidian wiki.</span>
+                </div>
+              </div>
+              <div class="actions">
+                <label class="file-button">
+                  <input id="fileInput" type="file" multiple accept=".pdf,.md,.txt" />
+                  Choose files
+                </label>
+                <div class="queue-line">
+                  <span>Queue length</span>
+                  <strong id="queueMirror">0</strong>
+                </div>
+              </div>
+            </section>
+
+            <aside class="panel guide-card">
+              <p class="eyebrow">Flow</p>
+              <ol class="steps">
+                <li>Feed a source to the cat.</li>
+                <li>Review queue status locally.</li>
+                <li>Open the generated source note in Obsidian.</li>
+                <li>Ask across the curated wiki.</li>
+              </ol>
+            </aside>
+          </div>
+        </section>
+
+        <section class="view" id="view-ask">
+          <div class="split">
+            <section class="panel qa-panel">
+              <p class="eyebrow">Ask</p>
+              <h2>Chat with the wiki, grounded in notes.</h2>
+              <form id="askForm" class="ask-form">
+                <textarea id="question" rows="6" placeholder="What mechanisms improve thermal conductivity at polymer interfaces?"></textarea>
+                <button type="submit">Ask Wiki Cat</button>
+              </form>
+              <pre id="answer" class="answer"></pre>
+            </section>
+            <section class="panel intro-panel">
+              <p class="eyebrow">Retrieval</p>
+              <h2>Hybrid lexical search.</h2>
+              <p>Questions are matched against Obsidian Markdown using English terms, CJK n-grams, title weighting, path weighting, and a small bilingual scientific synonym map. The answer cites the retrieved notes.</p>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="view-settings">
+          <section class="panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Settings</p>
+                <h2>Paths, model, parser, and prompts.</h2>
+              </div>
+            </div>
+            <form id="settingsForm" class="settings-form">
+              <label class="wide">Vault root <input id="vaultRoot" name="vaultRoot" /></label>
+              <label class="wide">External model config <input id="externalConfig" name="externalConfig" /></label>
+              <label>
+                Output language
+                <select id="outputLanguage" name="outputLanguage">
+                  <option value="en-US">English</option>
+                  <option value="zh-CN">Chinese</option>
+                </select>
+              </label>
+              <label>MinerU API file <input id="mineruApiFile" name="mineruApiFile" /></label>
+              <label>
+                Parse language
+                <select id="mineruLanguage" name="mineruLanguage">
+                  <option value="en">English</option>
+                  <option value="ch">Chinese</option>
+                </select>
+              </label>
+              <label>Scan interval <input id="intervalSeconds" name="intervalSeconds" type="number" min="30" step="30" /></label>
+              <label class="check-row"><input id="dryRun" name="dryRun" type="checkbox" /> Dry run</label>
+              <label class="wide">Analysis prompt <textarea id="analysisPrompt" name="analysisPrompt" rows="4"></textarea></label>
+              <button type="submit">Save settings</button>
+            </form>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <aside class="quick-dock" id="quickDock" aria-label="Quick access">
+      <button class="dock-toggle" id="dockToggle" type="button" aria-expanded="false" aria-controls="dockPanel">
+        <span class="dock-logo" aria-hidden="true">
+          <span class="dock-logo-book"></span>
+          <span class="dock-logo-cat">
+            <span class="dock-logo-ear left"></span>
+            <span class="dock-logo-ear right"></span>
+            <span class="dock-logo-eye left"></span>
+            <span class="dock-logo-eye right"></span>
+          </span>
+        </span>
+        <span>Wiki Cat</span>
+      </button>
+      <div class="dock-panel" id="dockPanel">
+        <button type="button" data-view-jump="setup">Setup</button>
+        <button type="button" data-view-jump="feed">Feed sources</button>
+        <button type="button" data-view-jump="ask">Ask wiki</button>
+        <button type="button" data-view-jump="settings">Settings</button>
+        <button id="dockRunNow" type="button">Run queue</button>
+      </div>
+    </aside>
+
+    <script src="/pet.js"></script>
+  </body>
+</html>

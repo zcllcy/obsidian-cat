@@ -1,0 +1,56 @@
+{
+  "name": "wiki-cat",
+  "version": "0.1.0",
+  "private": false,
+  "description": "A pixel cat desktop pet that feeds files, text, and links into an LLM-maintained Obsidian wiki.",
+  "main": "apps/desktop/main.js",
+  "scripts": {
+    "agent": "python src/agent.py",
+    "desktop": "electron .",
+    "dist:win": "electron-builder --win nsis"
+  },
+  "keywords": [
+    "obsidian",
+    "knowledge-base",
+    "desktop-pet",
+    "rag",
+    "llm",
+    "electron",
+    "wiki"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.0"
+  },
+  "build": {
+    "appId": "app.wikicat.desktop",
+    "productName": "Wiki Cat",
+    "asar": false,
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "apps/**/*",
+      "assets/**/*",
+      "public/**/*",
+      "src/**/*",
+      "config/agent.config.example.json",
+      "README.md",
+      "LICENSE"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/wiki-cat.ico",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Wiki Cat"
+    }
+  }
+}

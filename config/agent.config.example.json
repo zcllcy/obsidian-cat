@@ -1,0 +1,49 @@
+{
+  "vaultRoot": ".\\demo-vault",
+  "host": "127.0.0.1",
+  "port": 4317,
+  "intervalSeconds": 300,
+  "dryRun": true,
+  "model": {
+    "providerName": "openai-compatible",
+    "externalConfig": "",
+    "baseUrl": "https://api.openai.com/v1/chat/completions",
+    "apiKeyEnv": "OPENAI_API_KEY",
+    "apiKey": "",
+    "model": "gpt-4.1-mini",
+    "temperature": 0.2,
+    "maxTokens": 1800
+  },
+  "ingest": {
+    "feedFolder": "ingest",
+    "folders": ["inbox", "raw"],
+    "extensions": [".md", ".txt", ".pdf"],
+    "excludeFolders": ["raw/parsed", "raw/assets", "wiki/assets", "wiki"],
+    "maxCharsPerFile": 30000,
+    "maxDraggedTextChars": 2000000
+  },
+  "parser": {
+    "default": "auto",
+    "mineru": {
+      "enabled": false,
+      "apiFile": "",
+      "outputFolder": "raw/parsed",
+      "assetsFolder": "wiki/assets",
+      "language": "en",
+      "enableFormula": true,
+      "enableTable": true,
+      "isOcr": true,
+      "archiveOriginal": false
+    }
+  },
+  "output": {
+    "sourceNotesFolder": "wiki/sources",
+    "questionsFolder": "wiki/questions",
+    "language": "en-US",
+    "analysisPrompt": "Default to English. Curate each source into a concise research note with citation metadata, reusable concepts, methods, entities, evidence, limitations, open questions, and Obsidian wiki links."
+  },
+  "pet": {
+    "name": "Wiki Cat",
+    "mood": "curious"
+  }
+}

@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wiki Cat Pet</title>
+    <link rel="stylesheet" href="./pet-window.css" />
+  </head>
+  <body>
+    <main id="pet" class="pet" aria-label="Wiki Cat desktop pet">
+      <section id="dropZone" class="drop-zone" aria-label="Drop sources onto Wiki Cat">
+        <div class="pixel-cat" id="cat">
+          <span class="ear ear-left"></span>
+          <span class="ear ear-right"></span>
+          <span class="head">
+            <span class="eye eye-left"></span>
+            <span class="eye eye-right"></span>
+            <span class="nose"></span>
+          </span>
+          <span class="body"></span>
+          <span class="tail"></span>
+        </div>
+      </section>
+      <div class="status-text" id="statusText"></div>
+      <div class="queue-track" aria-hidden="true">
+        <div class="queue-fill" id="queueFill"></div>
+      </div>
+    </main>
+    <script src="./pet-window.js"></script>
+  </body>
+</html>

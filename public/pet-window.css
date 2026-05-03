@@ -1,0 +1,220 @@
+:root {
+  --ink: #271b14;
+  --fur: #f4a55f;
+  --fur-dark: #b96537;
+  --cream: #ffe2ac;
+  --mint: #56b89f;
+  --paper: rgba(255, 250, 240, 0.92);
+  --dialog: #fffdf4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  font-family: "Microsoft YaHei", "Segoe UI", sans-serif;
+  user-select: none;
+}
+
+.pet {
+  position: relative;
+  width: 220px;
+  height: 260px;
+  -webkit-app-region: drag;
+}
+
+.drop-zone {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 18px;
+  height: 178px;
+  display: grid;
+  place-items: end center;
+  -webkit-app-region: no-drag;
+}
+
+.drop-zone.dragging .pixel-cat {
+  transform: translateY(-8px) scale(1.06);
+  filter: drop-shadow(0 0 8px rgba(86, 184, 159, 0.65));
+}
+
+.pixel-cat {
+  position: relative;
+  width: 128px;
+  height: 142px;
+  image-rendering: pixelated;
+  transition: transform 140ms steps(2), filter 140ms steps(2);
+  animation: idle 1.4s steps(2) infinite;
+}
+
+.ear,
+.head,
+.body,
+.tail,
+.eye,
+.nose {
+  position: absolute;
+  display: block;
+  border: 4px solid var(--ink);
+  image-rendering: pixelated;
+}
+
+.ear {
+  top: 10px;
+  width: 36px;
+  height: 38px;
+  background: var(--fur);
+}
+
+.ear-left {
+  left: 18px;
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+.ear-right {
+  right: 18px;
+  clip-path: polygon(0 100%, 50% 0, 100% 100%);
+}
+
+.head {
+  left: 14px;
+  top: 34px;
+  width: 100px;
+  height: 78px;
+  background: var(--fur);
+  border-radius: 6px;
+  z-index: 2;
+}
+
+.body {
+  left: 26px;
+  bottom: 0;
+  width: 78px;
+  height: 58px;
+  background: var(--fur);
+  border-radius: 6px;
+}
+
+.tail {
+  right: 0;
+  bottom: 24px;
+  width: 42px;
+  height: 24px;
+  border-left: 0;
+  background: var(--fur);
+  animation: tail 1s steps(2) infinite;
+}
+
+.eye {
+  top: 28px;
+  width: 12px;
+  height: 16px;
+  background: var(--ink);
+  border: 0;
+  animation: blink 4s steps(1) infinite;
+}
+
+.eye-left {
+  left: 27px;
+}
+
+.eye-right {
+  right: 27px;
+}
+
+.nose {
+  left: 44px;
+  top: 48px;
+  width: 12px;
+  height: 8px;
+  border: 0;
+  background: var(--fur-dark);
+}
+
+.status-text {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 30px;
+  min-height: 42px;
+  padding: 8px 10px;
+  display: grid;
+  place-items: center;
+  border: 3px solid var(--ink);
+  border-radius: 3px;
+  background: var(--dialog);
+  box-shadow: 4px 4px 0 rgba(39, 27, 20, 0.92);
+  text-align: center;
+  color: var(--ink);
+  font-family: "MS Gothic", "Microsoft YaHei", "Segoe UI", sans-serif;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+.status-text::before {
+  content: "";
+  position: absolute;
+  left: 92px;
+  top: -12px;
+  width: 16px;
+  height: 16px;
+  background: var(--dialog);
+  border-left: 3px solid var(--ink);
+  border-top: 3px solid var(--ink);
+  transform: rotate(45deg);
+}
+
+.queue-track {
+  position: absolute;
+  left: 34px;
+  right: 34px;
+  bottom: 10px;
+  height: 9px;
+  border: 2px solid var(--ink);
+  border-radius: 2px;
+  background: var(--cream);
+  overflow: hidden;
+}
+
+.queue-fill {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--fur-dark), var(--fur), var(--mint));
+  transition: width 220ms steps(5);
+}
+
+.pet.working .pixel-cat {
+  animation: chew 0.7s steps(2) infinite;
+}
+
+@keyframes idle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes chew {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-4px) rotate(1deg); }
+}
+
+@keyframes tail {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes blink {
+  0%, 92%, 100% { height: 16px; }
+  94% { height: 4px; }
+}
