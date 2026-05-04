@@ -40,7 +40,7 @@
     "sourceNotesFolder": "wiki/sources",
     "questionsFolder": "wiki/questions",
     "language": "en-US",
-    "analysisPrompt": "Default to English. Curate each source into a concise research note with citation metadata, reusable concepts, methods, entities, evidence, limitations, open questions, and Obsidian wiki links."
+    "analysisPrompt": "Default to English unless the user chooses another output language. Keep the required Markdown headings unchanged for graph extraction. Detect the source type first: paper, web page, conversation, lab note, dataset, or general note. For papers, extract citation metadata, research problem, materials/systems, methods, data/code, key contributions, evidence chains, figures/tables, equations, limitations, reusable concepts, and follow-up questions. For web pages or conversations, convert them into traceable research notes, concept cards, and action questions. Never invent missing metadata; write Not found in extracted text. Bind every non-obvious claim to a source path, quote-level evidence, figure/table reference, or uncertainty note. Reusable Concepts must be short concept phrases, not full sentences. Follow-Up Questions must be actionable."
   },
   "pet": {
     "name": "Wiki Cat",

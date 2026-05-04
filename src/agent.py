@@ -130,9 +130,13 @@ def default_architecture_plan(requirements: str = "", language: str = "en-US") -
             "- [[wiki/syntheses/Research Map]]",
         ],
         "analysisPrompt": (
-            "Default to English. For each source, detect the source type, keep citation or URL metadata, "
-            "extract the research problem, methods, systems, claims, evidence, figures, limitations, reusable "
-            "concepts, entities, and open questions. Preserve source paths for every non-obvious claim."
+            "Default to English unless the user chooses another output language. Keep the required Markdown headings unchanged for graph extraction. "
+            "Detect the source type first: paper, web page, conversation, lab note, dataset, or general note. "
+            "For papers, extract citation metadata, research problem, materials/systems, methods, data/code, key contributions, evidence chains, figures/tables, equations, limitations, reusable concepts, and follow-up questions. "
+            "For web pages or conversations, convert them into traceable research notes, concept cards, and action questions. "
+            "Never invent missing metadata; write Not found in extracted text. "
+            "Bind every non-obvious claim to a source path, quote-level evidence, figure/table reference, or uncertainty note. "
+            "Reusable Concepts must be short concept phrases, not full sentences. Follow-Up Questions must be actionable."
         ),
     }
 
@@ -699,14 +703,16 @@ def build_prompt(config: dict, path: Path, text: str) -> str:
     language = output.get("language", "en-US")
     analysis_prompt = output.get(
         "analysisPrompt",
-        "Default to English. Extract reusable concepts, methods, systems, evidence chains, limitations, and open questions.",
+        "Default to English. Extract citation metadata, research problem, systems, methods, evidence chains, figures, limitations, reusable concepts, and open questions. Never invent missing metadata.",
     )
     return "\n".join(
         [
             "You maintain an Obsidian vault for scientific literature and research knowledge management.",
             "The vault focuses on LLM research, phonon/lattice-dynamics research, materials science, and adjacent computational research.",
-            f"Output language: {language}. Use Chinese by default unless the source explicitly requires another language.",
+            f"Output language: {language}.",
             f"Vault-specific analysis instructions: {analysis_prompt}",
+            "Follow the output contract strictly. Keep all Markdown section headings exactly as specified below, even when the chosen content language is not English.",
+            "Use concise, information-dense bullets. Prefer source-grounded evidence over generic summaries.",
             "Create a structured Obsidian Markdown literature note from the source content.",
             "Be precise, evidence-aware, and useful for future research synthesis.",
             "Do not invent metadata. If a field is missing, write 'Not found in extracted text'.",
