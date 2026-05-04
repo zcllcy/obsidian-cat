@@ -42,7 +42,7 @@ async function chooseKnowledgeVault() {
   const vaultRoot = result.filePaths[0];
   await fetch(`${AGENT_URL}/api/config`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json; charset=utf-8" },
     body: JSON.stringify({ vaultRoot })
   });
   await shell.openExternal(`${AGENT_URL}/#onboarding`);
@@ -119,7 +119,7 @@ function updateTrayMenu() {
           for (const filePath of result.filePaths) {
             await fetch(`${AGENT_URL}/api/feed-path`, {
               method: "POST",
-              headers: { "content-type": "application/json" },
+              headers: { "content-type": "application/json; charset=utf-8" },
               body: JSON.stringify({ path: filePath })
             });
           }
@@ -148,7 +148,7 @@ ipcMain.handle("feed-files", async (_event, filePaths) => {
   for (const filePath of filePaths) {
     const response = await fetch(`${AGENT_URL}/api/feed-path`, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json; charset=utf-8" },
       body: JSON.stringify({ path: filePath })
     });
     results.push(await response.json());
@@ -159,7 +159,7 @@ ipcMain.handle("feed-files", async (_event, filePaths) => {
 ipcMain.handle("feed-url", async (_event, url) => {
   const response = await fetch(`${AGENT_URL}/api/feed-url`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json; charset=utf-8" },
     body: JSON.stringify({ url })
   });
   if (!response.ok) {
@@ -171,7 +171,7 @@ ipcMain.handle("feed-url", async (_event, url) => {
 ipcMain.handle("feed-text", async (_event, payload) => {
   const response = await fetch(`${AGENT_URL}/api/feed-text`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json; charset=utf-8" },
     body: JSON.stringify(payload)
   });
   if (!response.ok) {

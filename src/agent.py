@@ -45,9 +45,42 @@ STATUS = {
     "errors": [],
 }
 
+DEFAULT_ANALYSIS_PROMPT = (
+    "Default to English unless the user chooses another output language. Keep the required Markdown headings unchanged for graph extraction. "
+    "Detect the source type first: paper, web page, conversation, lab note, dataset, or general note. "
+    "For papers, extract citation metadata, research problem, materials/systems, methods, data/code, key contributions, evidence chains, figures/tables, equations, limitations, reusable concepts, and follow-up questions. "
+    "For web pages or conversations, convert them into traceable research notes, concept cards, and action questions. "
+    "Never invent missing metadata; write Not found in extracted text. "
+    "Bind every non-obvious claim to a source path, quote-level evidence, figure/table reference, or uncertainty note. "
+    "Reusable Concepts must be short concept phrases, not full sentences. Follow-Up Questions must be actionable."
+)
+
+
+def repair_mojibake_text(value: str) -> str:
+    if not isinstance(value, str) or not value:
+        return value
+    markers = ("榛", "涓", "锛", "鑱", "鐑", "绉", "鍥", "澹", "姝")
+    if sum(value.count(marker) for marker in markers) < 3:
+        return value
+    try:
+        repaired = value.encode("gbk", errors="strict").decode("utf-8", errors="strict")
+    except UnicodeError:
+        return value
+    return repaired if repaired.count("�") <= value.count("�") else value
+
+
+def repair_text_fields(value):
+    if isinstance(value, str):
+        return repair_mojibake_text(value)
+    if isinstance(value, list):
+        return [repair_text_fields(item) for item in value]
+    if isinstance(value, dict):
+        return {key: repair_text_fields(item) for key, item in value.items()}
+    return value
+
 
 def read_json(path: Path) -> dict:
-    return json.loads(path.read_text(encoding="utf-8-sig"))
+    return repair_text_fields(json.loads(path.read_text(encoding="utf-8-sig")))
 
 
 def write_json(path: Path, data: dict) -> None:
@@ -129,15 +162,7 @@ def default_architecture_plan(requirements: str = "", language: str = "en-US") -
             "## Synthesis",
             "- [[wiki/syntheses/Research Map]]",
         ],
-        "analysisPrompt": (
-            "Default to English unless the user chooses another output language. Keep the required Markdown headings unchanged for graph extraction. "
-            "Detect the source type first: paper, web page, conversation, lab note, dataset, or general note. "
-            "For papers, extract citation metadata, research problem, materials/systems, methods, data/code, key contributions, evidence chains, figures/tables, equations, limitations, reusable concepts, and follow-up questions. "
-            "For web pages or conversations, convert them into traceable research notes, concept cards, and action questions. "
-            "Never invent missing metadata; write Not found in extracted text. "
-            "Bind every non-obvious claim to a source path, quote-level evidence, figure/table reference, or uncertainty note. "
-            "Reusable Concepts must be short concept phrases, not full sentences. Follow-Up Questions must be actionable."
-        ),
+        "analysisPrompt": DEFAULT_ANALYSIS_PROMPT,
     }
 
 
@@ -710,10 +735,7 @@ def build_prompt(config: dict, path: Path, text: str) -> str:
     rel = path.relative_to(Path(config["vaultRoot"])).as_posix()
     output = config.get("output", {})
     language = output.get("language", "en-US")
-    analysis_prompt = output.get(
-        "analysisPrompt",
-        "Default to English. Extract citation metadata, research problem, systems, methods, evidence chains, figures, limitations, reusable concepts, and open questions. Never invent missing metadata.",
-    )
+    analysis_prompt = repair_mojibake_text(output.get("analysisPrompt") or DEFAULT_ANALYSIS_PROMPT)
     return "\n".join(
         [
             "You maintain an Obsidian vault for scientific literature and research knowledge management.",
@@ -851,6 +873,55 @@ def update_map_of_contents(config: dict) -> None:
         moc_path.write_text(text, encoding="utf-8")
 
 
+def decode_http_body(raw: bytes, content_type: str = "") -> str:
+    charset = "utf-8"
+    match = re.search(r"charset=([^;]+)", content_type, flags=re.IGNORECASE)
+    if match:
+        charset = match.group(1).strip().strip('"')
+    try:
+        return raw.decode(charset)
+    except (LookupError, UnicodeDecodeError):
+        return raw.decode("utf-8", errors="replace")
+
+
+def extract_model_content(data: dict) -> str:
+    choices = data.get("choices")
+    if isinstance(choices, list) and choices:
+        first = choices[0] or {}
+        message = first.get("message")
+        if isinstance(message, dict):
+            content = message.get("content")
+            if isinstance(content, str):
+                return content
+            if isinstance(content, list):
+                parts = []
+                for item in content:
+                    if isinstance(item, str):
+                        parts.append(item)
+                    elif isinstance(item, dict):
+                        text = item.get("text") or item.get("content")
+                        if isinstance(text, str):
+                            parts.append(text)
+                return "\n".join(parts)
+        text = first.get("text")
+        if isinstance(text, str):
+            return text
+    output_text = data.get("output_text")
+    if isinstance(output_text, str):
+        return output_text
+    output = data.get("output")
+    if isinstance(output, list):
+        parts = []
+        for item in output:
+            if isinstance(item, dict):
+                for content_item in item.get("content", []):
+                    if isinstance(content_item, dict) and isinstance(content_item.get("text"), str):
+                        parts.append(content_item["text"])
+        if parts:
+            return "\n".join(parts)
+    return ""
+
+
 def call_model(config: dict, prompt: str) -> str:
     model = config["model"]
     api_key = model.get("apiKey") or os.environ.get(model.get("apiKeyEnv", ""))
@@ -867,7 +938,11 @@ def call_model(config: dict, prompt: str) -> str:
             {"role": "user", "content": prompt},
         ],
     }
-    headers = {"Content-Type": "application/json"}
+    headers = {
+        "Content-Type": "application/json; charset=utf-8",
+        "Accept": "application/json",
+        "Accept-Charset": "utf-8",
+    }
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
 
@@ -883,11 +958,11 @@ def call_model(config: dict, prompt: str) -> str:
     )
     try:
         with urllib.request.urlopen(request, timeout=int(model.get("timeoutSeconds", 120))) as response:
-            data = json.loads(response.read().decode("utf-8"))
+            data = json.loads(decode_http_body(response.read(), response.headers.get("Content-Type", "")))
     except urllib.error.HTTPError as error:
-        detail = error.read().decode("utf-8", errors="replace")[:500]
+        detail = decode_http_body(error.read(), error.headers.get("Content-Type", ""))[:500]
         raise RuntimeError(f"model API failed {error.code}: {detail}") from error
-    return data.get("choices", [{}])[0].get("message", {}).get("content", "")
+    return repair_mojibake_text(extract_model_content(data)).strip()
 
 
 def note_text(path: Path, max_chars: int = 5000) -> str:
@@ -1251,8 +1326,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_error(404)
 
     def handle_ask(self) -> None:
-        length = int(self.headers.get("Content-Length", "0"))
-        payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        payload = self.read_json_payload()
         question = payload.get("question", "").strip()
         if not question:
             self.send_error(400, "question is required")
@@ -1260,8 +1334,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_json(answer_question(load_config(), question))
 
     def handle_setup_vault(self) -> None:
-        length = int(self.headers.get("Content-Length", "0"))
-        payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        payload = self.read_json_payload()
         vault_path = payload.get("vaultRoot")
         if not vault_path:
             self.send_error(400, "vaultRoot is required")
@@ -1269,15 +1342,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_json(initialize_vault(vault_path, payload.get("architecture")))
 
     def handle_design_vault(self) -> None:
-        length = int(self.headers.get("Content-Length", "0"))
-        payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        payload = self.read_json_payload()
         requirements = payload.get("requirements", "")
         language = payload.get("language", "en-US")
         self.send_json({"ok": True, "architecture": design_architecture(load_config(), requirements, language)})
 
     def handle_config_update(self) -> None:
-        length = int(self.headers.get("Content-Length", "0"))
-        payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        payload = self.read_json_payload()
         config = load_raw_config()
 
         for key in ["vaultRoot", "intervalSeconds", "dryRun"]:
@@ -1303,8 +1374,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_json({"ok": True, "config": config})
 
     def handle_feed_path(self) -> None:
-        length = int(self.headers.get("Content-Length", "0"))
-        payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        payload = self.read_json_payload()
         source = Path(payload.get("path", "")).resolve()
         config = load_config()
         if not source.exists() or not source.is_file():
@@ -1346,8 +1416,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_json({"ok": True, "saved": saved, "queued": True, "status": STATUS})
 
     def handle_feed_url(self) -> None:
-        length = int(self.headers.get("Content-Length", "0"))
-        payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        payload = self.read_json_payload()
         url = payload.get("url", "").strip()
         if not url:
             self.send_error(400, "url is required")
@@ -1361,8 +1430,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.send_json({"ok": True, "saved": str(target), "queued": True, "status": STATUS})
 
     def handle_feed_text(self) -> None:
-        length = int(self.headers.get("Content-Length", "0"))
-        payload = json.loads(self.rfile.read(length).decode("utf-8"))
+        payload = self.read_json_payload()
         text = payload.get("text", "")
         source = payload.get("source", "dragged-text")
         try:
@@ -1372,6 +1440,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
         request_run()
         self.send_json({"ok": True, "saved": str(target), "queued": True, "status": STATUS})
+
+    def read_json_payload(self) -> dict:
+        length = int(self.headers.get("Content-Length", "0"))
+        body = self.rfile.read(length)
+        payload = json.loads(decode_http_body(body, self.headers.get("Content-Type", "")))
+        return repair_text_fields(payload)
 
     def send_json(self, data: dict) -> None:
         body = json.dumps(data, ensure_ascii=False, indent=2).encode("utf-8")

@@ -127,7 +127,7 @@ fields.designVault?.addEventListener("click", async () => {
   try {
     const response = await fetch("/api/design-vault", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json; charset=utf-8" },
       body: JSON.stringify({
         requirements: fields.setupRequirements.value,
         language: fields.setupLanguage.value
@@ -157,7 +157,7 @@ fields.onboardingForm?.addEventListener("submit", async (event) => {
   try {
     const response = await fetch("/api/setup-vault", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json; charset=utf-8" },
       body: JSON.stringify({ vaultRoot: fields.setupVaultRoot.value, architecture })
     });
     if (!response.ok) throw new Error(await response.text());
@@ -212,7 +212,7 @@ fields.settingsForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   await fetch("/api/config", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json; charset=utf-8" },
     body: JSON.stringify({
       vaultRoot: fields.vaultRoot.value,
       intervalSeconds: Number(fields.intervalSeconds.value || 300),
@@ -233,7 +233,7 @@ fields.askForm.addEventListener("submit", async (event) => {
   fields.answer.textContent = "Searching the wiki...";
   const response = await fetch("/api/ask", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json; charset=utf-8" },
     body: JSON.stringify({ question })
   });
   if (!response.ok) {
