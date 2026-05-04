@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -109,7 +110,9 @@ def _safe_slug(path: Path) -> str:
     name = path.stem
     for char in '<>:"/\\|?*':
         name = name.replace(char, " ")
-    return " ".join(name.split()).strip()[:120] or f"mineru-{int(time.time())}"
+    name = " ".join(name.split()).strip() or f"mineru-{int(time.time())}"
+    digest = hashlib.sha1(str(path).encode("utf-8", errors="ignore")).hexdigest()[:10]
+    return f"{name[:64].strip()}-{digest}"
 
 
 def _rewrite_asset_links(md_path: Path, source_root: Path, asset_root: Path, note_slug: str, vault_root: Path) -> str:

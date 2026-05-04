@@ -675,8 +675,15 @@ def collect_candidates(config: dict, state: dict) -> list[dict]:
 
 def sync_jobs(config: dict, state: dict) -> dict:
     data = load_jobs()
-    known = {(job.get("filePath"), job.get("hash")) for job in data["jobs"]}
+    changed = False
     now = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    for job in data["jobs"]:
+        if job.get("status") in {"queued", "running"} and state.get("processed", {}).get(job.get("filePath")) == job.get("hash"):
+            job["status"] = "done"
+            job["updatedAt"] = now
+            job["error"] = None
+            changed = True
+    known = {(job.get("filePath"), job.get("hash")) for job in data["jobs"]}
     for item in collect_candidates(config, state):
         key = (str(item["filePath"]), item["hash"])
         if key in known:
@@ -693,7 +700,9 @@ def sync_jobs(config: dict, state: dict) -> dict:
                 "outputPath": None,
             }
         )
-    save_jobs(data)
+        changed = True
+    if changed:
+        save_jobs(data)
     return data
 
 
