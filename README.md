@@ -25,6 +25,15 @@ The goal is simple: make an LLM-maintained knowledge base feel less like databas
 - **Grounded Ask mode**  
   Wiki Cat retrieves local notes and answers with source paths, so the chat layer remains tied to your wiki rather than becoming another disconnected conversation.
 
+- **Background maintenance layer**
+  After a queue finishes, Wiki Cat can run a vault pipeline that normalizes image links, refreshes source-note structure, performs second-pass concept/question distillation, updates synthesis entry points, and writes an audit report.
+
+- **Figure-aware notes**
+  Parsed PDF assets are copied into `wiki/assets/<source>/` and source notes can embed key figures with Obsidian-compatible image links.
+
+- **Pixel-pet feedback**
+  The desktop pet uses temporary pixel-style speech bubbles for queue events. During idle moments it occasionally shows short local lines, with an optional low-probability model-generated line.
+
 ## Workflow
 
 ```text
@@ -32,6 +41,7 @@ feed the cat
   -> source enters the queue
   -> parser extracts text and assets
   -> LLM curates a structured Markdown note
+  -> optional maintenance normalizes links and distills graph nodes
   -> note is written into the wiki
   -> Ask mode retrieves from the wiki with citations
 ```
@@ -115,6 +125,8 @@ The model endpoint is OpenAI-compatible:
 You can point it at OpenAI, DeepSeek, Qwen-compatible gateways, local OpenAI-compatible servers, or your own proxy.
 
 PDF parsing is optional. The open-source default keeps MinerU disabled. If you have a compatible MinerU setup, enable it in `config/agent.config.json`.
+
+Vault maintenance is controlled by `maintenance.autoRunAfterQueue`. When enabled, maintenance waits until queued/running ingest jobs finish before running, so it does not race against note generation.
 
 ## Local Safety
 

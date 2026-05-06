@@ -2,6 +2,7 @@
   --ink: #271b14;
   --fur: #f4a55f;
   --fur-dark: #b96537;
+  --cat-light: #ffe2b5;
   --cream: #ffe2ac;
   --mint: #56b89f;
   --paper: rgba(255, 250, 240, 0.92);
@@ -14,8 +15,8 @@
 
 html,
 body {
-  width: 100%;
-  height: 100%;
+  width: 180px;
+  height: 170px;
   margin: 0;
   overflow: hidden;
   background: transparent;
@@ -25,31 +26,31 @@ body {
 
 .pet {
   position: relative;
-  width: 220px;
-  height: 260px;
+  width: 180px;
+  height: 170px;
   -webkit-app-region: drag;
 }
 
 .drop-zone {
   position: absolute;
-  left: 20px;
-  right: 20px;
-  top: 18px;
-  height: 178px;
+  left: 48px;
+  right: 48px;
+  top: 72px;
+  height: 86px;
   display: grid;
   place-items: end center;
   -webkit-app-region: no-drag;
 }
 
 .drop-zone.dragging .pixel-cat {
-  transform: translateY(-8px) scale(1.06);
+  transform: translateY(-5px);
   filter: drop-shadow(0 0 8px rgba(86, 184, 159, 0.65));
 }
 
 .pixel-cat {
   position: relative;
-  width: 128px;
-  height: 142px;
+  width: 82px;
+  height: 86px;
   image-rendering: pixelated;
   transition: transform 140ms steps(2), filter 140ms steps(2);
   animation: idle 1.4s steps(2) infinite;
@@ -68,83 +69,139 @@ body {
 }
 
 .ear {
-  top: 10px;
-  width: 36px;
-  height: 38px;
+  top: 2px;
+  width: 22px;
+  height: 24px;
   background: var(--fur);
+  z-index: 2;
+}
+
+.ear::after {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 8px;
+  width: 7px;
+  height: 8px;
+  background: var(--cat-light);
+  border: 2px solid var(--ink);
 }
 
 .ear-left {
-  left: 18px;
+  left: 12px;
   clip-path: polygon(0 100%, 50% 0, 100% 100%);
 }
 
 .ear-right {
-  right: 18px;
+  right: 12px;
   clip-path: polygon(0 100%, 50% 0, 100% 100%);
 }
 
 .head {
-  left: 14px;
-  top: 34px;
-  width: 100px;
-  height: 78px;
+  left: 10px;
+  top: 20px;
+  width: 62px;
+  height: 48px;
   background: var(--fur);
-  border-radius: 6px;
-  z-index: 2;
+  border-radius: 4px;
+  z-index: 3;
+}
+
+.head::before {
+  content: "";
+  position: absolute;
+  left: 23px;
+  top: 4px;
+  width: 5px;
+  height: 12px;
+  background: var(--fur-dark);
+  box-shadow: 12px 0 0 var(--fur-dark);
 }
 
 .body {
-  left: 26px;
+  left: 17px;
   bottom: 0;
-  width: 78px;
-  height: 58px;
+  width: 48px;
+  height: 34px;
   background: var(--fur);
-  border-radius: 6px;
+  border-radius: 4px;
+  z-index: 1;
+}
+
+.body::before,
+.body::after {
+  content: "";
+  position: absolute;
+  bottom: -4px;
+  width: 13px;
+  height: 8px;
+  border: 3px solid var(--ink);
+  background: var(--cat-light);
+}
+
+.body::before {
+  left: 6px;
+}
+
+.body::after {
+  right: 6px;
 }
 
 .tail {
-  right: 0;
-  bottom: 24px;
-  width: 42px;
-  height: 24px;
+  right: 3px;
+  bottom: 15px;
+  width: 24px;
+  height: 14px;
   border-left: 0;
   background: var(--fur);
   animation: tail 1s steps(2) infinite;
+  z-index: 0;
 }
 
 .eye {
-  top: 28px;
-  width: 12px;
-  height: 16px;
+  top: 17px;
+  width: 7px;
+  height: 10px;
   background: var(--ink);
   border: 0;
   animation: blink 4s steps(1) infinite;
 }
 
 .eye-left {
-  left: 27px;
+  left: 17px;
 }
 
 .eye-right {
-  right: 27px;
+  right: 17px;
 }
 
 .nose {
-  left: 44px;
-  top: 48px;
-  width: 12px;
-  height: 8px;
+  left: 27px;
+  top: 30px;
+  width: 8px;
+  height: 5px;
   border: 0;
   background: var(--fur-dark);
+}
+
+.nose::after {
+  content: "";
+  position: absolute;
+  left: -11px;
+  top: 9px;
+  width: 30px;
+  height: 4px;
+  background:
+    linear-gradient(90deg, var(--cat-light) 0 7px, transparent 7px 12px, var(--cat-light) 12px 18px, transparent 18px 23px, var(--cat-light) 23px 30px);
 }
 
 .status-text {
   position: absolute;
   left: 10px;
   right: 10px;
-  bottom: 30px;
-  min-height: 42px;
+  top: 4px;
+  min-height: 38px;
+  max-height: 54px;
   padding: 8px 10px;
   display: grid;
   place-items: center;
@@ -157,31 +214,40 @@ body {
   font-family: "MS Gothic", "Microsoft YaHei", "Segoe UI", sans-serif;
   font-size: 11px;
   font-weight: 800;
-  line-height: 1.25;
+  line-height: 1.3;
   overflow-wrap: anywhere;
+  overflow: hidden;
   pointer-events: none;
   image-rendering: pixelated;
+  opacity: 0;
+  transform: translateY(4px) scale(0.94);
+  transition: opacity 120ms steps(2), transform 120ms steps(2);
+}
+
+.status-text.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
 .status-text::before {
   content: "";
   position: absolute;
-  left: 92px;
-  top: -12px;
-  width: 16px;
-  height: 16px;
+  left: 86px;
+  bottom: -8px;
+  width: 12px;
+  height: 12px;
   background: var(--dialog);
-  border-left: 3px solid var(--ink);
-  border-top: 3px solid var(--ink);
+  border-right: 3px solid var(--ink);
+  border-bottom: 3px solid var(--ink);
   transform: rotate(45deg);
 }
 
 .queue-track {
   position: absolute;
-  left: 34px;
-  right: 34px;
-  bottom: 10px;
-  height: 9px;
+  left: 54px;
+  right: 54px;
+  bottom: 4px;
+  height: 7px;
   border: 2px solid var(--ink);
   border-radius: 2px;
   background: var(--cream);
@@ -201,12 +267,12 @@ body {
 
 @keyframes idle {
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
+  50% { transform: translateY(-4px); }
 }
 
 @keyframes chew {
   0%, 100% { transform: translateY(0) rotate(-1deg); }
-  50% { transform: translateY(-4px) rotate(1deg); }
+  50% { transform: translateY(-5px) rotate(1deg); }
 }
 
 @keyframes tail {
@@ -215,6 +281,6 @@ body {
 }
 
 @keyframes blink {
-  0%, 92%, 100% { height: 16px; }
-  94% { height: 4px; }
+  0%, 92%, 100% { height: 10px; }
+  94% { height: 3px; }
 }

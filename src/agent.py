@@ -6,8 +6,11 @@ from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
+import random
 import re
 import shutil
+import subprocess
+import sys
 import socketserver
 import threading
 import time
@@ -21,9 +24,12 @@ from mineru_adapter import parse_pdf_with_mineru
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = PROJECT_ROOT / "config" / "agent.config.json"
 EXAMPLE_CONFIG_PATH = PROJECT_ROOT / "config" / "agent.config.example.json"
-STATE_PATH = PROJECT_ROOT / "state" / "processed.json"
-JOBS_PATH = PROJECT_ROOT / "state" / "jobs.json"
-LOG_PATH = PROJECT_ROOT / "logs" / "agent.log"
+APP_DATA_DIR = Path(os.environ.get("APPDATA", PROJECT_ROOT)) / "Wiki Cat"
+STATE_DIR = Path(os.environ.get("WIKI_CAT_STATE_DIR", APP_DATA_DIR / "state"))
+LOG_DIR = Path(os.environ.get("WIKI_CAT_LOG_DIR", APP_DATA_DIR / "logs"))
+STATE_PATH = STATE_DIR / "processed.json"
+JOBS_PATH = STATE_DIR / "jobs.json"
+LOG_PATH = LOG_DIR / "agent.log"
 PUBLIC_DIR = PROJECT_ROOT / "public"
 RUN_LOCK = threading.Lock()
 RUN_EVENT = threading.Event()
@@ -45,17 +51,18 @@ STATUS = {
     "errors": [],
 }
 
-DEFAULT_ANALYSIS_PROMPT = (
-    "Default to English unless the user chooses another output language. Keep the required Markdown headings unchanged for graph extraction. "
-    "Detect the source type first: paper, web page, conversation, lab note, dataset, or general note. "
-    "For papers, extract citation metadata, research problem, materials/systems, methods, data/code, key contributions, evidence chains, figures/tables, equations, limitations, reusable concepts, and follow-up questions. "
-    "For web pages or conversations, convert them into traceable research notes, concept cards, and action questions. "
-    "Never invent missing metadata; write Not found in extracted text. "
-    "Bind every non-obvious claim to a source path, quote-level evidence, figure/table reference, or uncertainty note. "
-    "Reusable Concepts must be short concept phrases, not full sentences. Follow-Up Questions must be actionable."
-)
+DEFAULT_ANALYSIS_PROMPT = """Default to English unless the user chooses another output language. Keep the required Markdown headings unchanged for graph extraction.
 
+You are a careful research knowledge-base curator. Convert incoming sources into durable Obsidian Markdown notes.
 
+1. Detect the source type first: research paper, review, web page, conversation, lab note, dataset description, or general note. If unclear, write Status: uncertain.
+2. Do not invent titles, authors, years, venues, DOI, URLs, datasets, or code repositories. Missing fields must be written as Not found in extracted text. Inferred fields must be marked Status: inferred.
+3. For papers and reviews, extract Citation, Research Classification, One-Sentence Takeaway, Structured Abstract, Key Contributions, Methods And Experimental Design, Results And Evidence, Figures And Tables, Important Equations Or Variables, Limitations And Caveats, Reusable Concepts, Links To Existing Vault Topics, Follow-Up Questions, and Extraction Notes.
+4. Bind every non-obvious claim to a source path, original evidence, figure/table number, equation number, or context note. If evidence is insufficient, write Needs verification.
+5. Reusable Concepts must be short concept phrases, not full sentences. Follow-Up Questions must be concrete and actionable.
+6. Use standard Markdown and wiki links such as [[wiki/concepts/Phonon]]. Tables must be valid Markdown tables.
+7. Keep the output complete and information-dense; avoid unsupported expansion or marketing-style summaries.
+"""
 def repair_mojibake_text(value: str) -> str:
     if not isinstance(value, str) or not value:
         return value
@@ -116,11 +123,11 @@ def safe_folder(folder: str) -> str | None:
     return clean or None
 
 
-def default_architecture_plan(requirements: str = "", language: str = "en-US") -> dict:
-    focus = requirements.strip() or "research papers, notes, web clippings, concepts, methods, evidence, and open questions"
+def default_architecture_plan(requirements: str = "", language: str = "zh-CN") -> dict:
+    focus = requirements.strip() or "科研文献、LLM 研究、声子/材料科学及其交叉方向"
     return {
-        "language": language or "en-US",
-        "summary": f"An Obsidian wiki maintained by Wiki Cat for {focus}.",
+        "language": language or "zh-CN",
+        "summary": f"围绕“{focus}”建立一个适合 Obsidian 和 LLM 自动维护的科研知识库。",
         "folders": [
             ".obsidian",
             "wiki",
@@ -162,11 +169,19 @@ def default_architecture_plan(requirements: str = "", language: str = "en-US") -
             "## Synthesis",
             "- [[wiki/syntheses/Research Map]]",
         ],
-        "analysisPrompt": DEFAULT_ANALYSIS_PROMPT,
+        "analysisPrompt": (
+            "默认使用中文输出正文内容，但保留系统要求的英文 Markdown 标题以便自动建图。"
+            "先判断来源类型：科研论文、网页、聊天记录、实验记录或普通笔记。"
+            "对科研论文必须提取 citation、研究问题、材料/体系、方法、数据/代码、关键贡献、证据链、图表含义、重要公式、局限性、可复用概念和后续问题。"
+            "对网页或聊天记录，应整理为可追溯的研究笔记、概念卡片和行动问题。"
+            "禁止编造缺失元数据；缺失字段写 Not found in extracted text。"
+            "每个非显然结论必须绑定来源路径、原文证据或图表编号。"
+            "Reusable Concepts 使用短语级概念，避免整句；Follow-Up Questions 使用可执行研究问题。"
+        ),
     }
 
 
-def normalize_architecture_plan(plan: dict | None, requirements: str = "", language: str = "en-US") -> dict:
+def normalize_architecture_plan(plan: dict | None, requirements: str = "", language: str = "zh-CN") -> dict:
     base = default_architecture_plan(requirements, language)
     if not isinstance(plan, dict):
         return base
@@ -187,7 +202,7 @@ def normalize_architecture_plan(plan: dict | None, requirements: str = "", langu
         elif not isinstance(value, str):
             merged[key] = "\n".join(base[key])
     merged["analysisPrompt"] = str(merged.get("analysisPrompt") or base["analysisPrompt"]).strip()
-    merged["language"] = str(merged.get("language") or language or "en-US")
+    merged["language"] = str(merged.get("language") or language or "zh-CN")
     merged["summary"] = str(merged.get("summary") or base["summary"]).strip()
     return merged
 
@@ -233,12 +248,13 @@ def initialize_vault(vault_path: str | Path, plan: dict | None = None) -> dict:
 def vault_status(config: dict | None = None) -> dict:
     raw = config or load_raw_config()
     vault = Path(raw.get("vaultRoot", "")).resolve()
+    has_wiki = (vault / "wiki").exists()
     return {
         "vaultRoot": str(vault),
         "exists": vault.exists(),
         "hasObsidian": (vault / ".obsidian").exists(),
-        "hasWiki": (vault / "wiki").exists(),
-        "ready": vault.exists() and (vault / ".obsidian").exists() and (vault / "wiki").exists(),
+        "hasWiki": has_wiki,
+        "ready": vault.exists() and has_wiki,
     }
 
 
@@ -266,7 +282,7 @@ def refresh_queue_status() -> None:
     try:
         config = load_config()
         state = load_state()
-        jobs = sync_jobs(config, state).get("jobs", [])
+        jobs = sync_jobs(config, state, enqueue_missing=False).get("jobs", [])
         active = [job for job in jobs if job.get("status") in {"queued", "running"}]
         STATUS["queueLength"] = len(active)
         if not STATUS["processing"]:
@@ -389,19 +405,84 @@ def extract_section(markdown: str, heading: str) -> str:
     return "\n".join(out).strip()
 
 
+INVALID_GRAPH_TOPIC_PATTERNS = [
+    re.compile(r"^not found in extracted text$", re.I),
+    re.compile(r"^needs verification$", re.I),
+    re.compile(r"^status:\s*(uncertain|inferred)$", re.I),
+    re.compile(r"^if relevant$", re.I),
+    re.compile(r"^specifically\b", re.I),
+    re.compile(r"^x\s*=", re.I),
+    re.compile(r"^[a-z]{1,3}\)$", re.I),
+]
+
+
 def clean_item(text: str) -> str:
-    item = text.strip().strip("-*").strip()
-    item = item.split(":")[0].strip() if ":" in item and len(item.split(":")[0]) < 80 else item
+    item = repair_mojibake_text(text or "")
+    item = item.strip().strip("-*").strip()
+    item = re.sub(r"^\d+[.)]\s*", "", item)
+    item = re.sub(r"^e\.g\.,?\s*", "", item, flags=re.I)
+    item = re.sub(r"\s+", " ", item)
     item = item.replace("[[", "").replace("]]", "").strip()
-    return item.strip(" .;，。；")
+    if "|" in item:
+        item = item.split("|", 1)[-1].strip()
+    if ":" in item and len(item.split(":", 1)[0]) < 80:
+        item = item.split(":", 1)[0].strip()
+    return item.strip(" \t\r\n\"'`.,;:，。；、")
+
+
+def split_list_value(value: str) -> list[str]:
+    items: list[str] = []
+    current: list[str] = []
+    depth = 0
+    pairs = {"(": ")", "[": "]", "{": "}"}
+    closing = set(pairs.values())
+    for char in value:
+        if char in pairs:
+            depth += 1
+        elif char in closing and depth > 0:
+            depth -= 1
+        if char in {",", ";", "，", "；", "、"} and depth == 0:
+            item = "".join(current).strip()
+            if item:
+                items.append(item)
+            current = []
+            continue
+        current.append(char)
+    item = "".join(current).strip()
+    if item:
+        items.append(item)
+    return items
+
+
+def looks_invalid_graph_topic(title: str) -> bool:
+    normalized = clean_item(title)
+    if len(normalized) < 2 or len(normalized) > 100:
+        return True
+    if normalized.count("(") != normalized.count(")"):
+        return True
+    if normalized.count("[") != normalized.count("]"):
+        return True
+    if normalized.count("{") != normalized.count("}"):
+        return True
+    if normalized.endswith((")", "]", "}")) and not re.search(r"[\(\[\{]", normalized):
+        return True
+    if re.search(r"[\(\[\{]\s*$", normalized):
+        return True
+    if re.search(r"^\W+|\W+$", normalized):
+        return True
+    return any(pattern.match(normalized) for pattern in INVALID_GRAPH_TOPIC_PATTERNS)
 
 
 def split_field_items(section: str, field: str) -> list[str]:
     for line in section.splitlines():
         if line.strip().lower().startswith(f"- {field.lower()}:"):
             value = line.split(":", 1)[1]
-            raw = value.replace(" and ", ",").replace("；", ",").replace("，", ",").split(",")
-            return [clean_item(item) for item in raw if clean_item(item)]
+            items: list[str] = []
+            for item in split_list_value(value):
+                cleaned = clean_item(item)
+                if cleaned and not looks_invalid_graph_topic(cleaned):
+                    items.append(cleaned)
+            return list(dict.fromkeys(items))
     return []
 
 
@@ -411,7 +492,7 @@ def bullet_items(section: str, limit: int = 12) -> list[str]:
         stripped = line.strip()
         if stripped.startswith("- "):
             item = clean_item(stripped[2:])
-            if item and item.lower() not in {"not found in extracted text", "if relevant"}:
+            if item and not looks_invalid_graph_topic(item):
                 items.append(item)
         if len(items) >= limit:
             break
@@ -428,7 +509,8 @@ def append_unique(path: Path, text: str) -> None:
 
 def create_graph_note(vault_root: Path, folder: str, name: str, source_link: str, note_title: str) -> str | None:
     clean = clean_item(name)
-    if not clean or len(clean) > 100:
+    if looks_invalid_graph_topic(clean):
+        log("skipped invalid graph topic", folder=folder, topic=name)
         return None
     rel = f"wiki/{folder}/{wikilink_slug(clean)}"
     path = vault_root / f"{rel}.md"
@@ -698,7 +780,7 @@ def collect_candidates(config: dict, state: dict) -> list[dict]:
     return files
 
 
-def sync_jobs(config: dict, state: dict) -> dict:
+def sync_jobs(config: dict, state: dict, enqueue_missing: bool = True) -> dict:
     data = load_jobs()
     changed = False
     now = time.strftime("%Y-%m-%dT%H:%M:%S%z")
@@ -709,23 +791,24 @@ def sync_jobs(config: dict, state: dict) -> dict:
             job["error"] = None
             changed = True
     known = {(job.get("filePath"), job.get("hash")) for job in data["jobs"]}
-    for item in collect_candidates(config, state):
-        key = (str(item["filePath"]), item["hash"])
-        if key in known:
-            continue
-        data["jobs"].append(
-            {
-                "id": hashlib.sha256(f"{key[0]}|{key[1]}".encode("utf-8")).hexdigest()[:16],
-                "filePath": key[0],
-                "hash": key[1],
-                "status": "queued",
-                "createdAt": now,
-                "updatedAt": now,
-                "error": None,
-                "outputPath": None,
-            }
-        )
-        changed = True
+    if enqueue_missing:
+        for item in collect_candidates(config, state):
+            key = (str(item["filePath"]), item["hash"])
+            if key in known:
+                continue
+            data["jobs"].append(
+                {
+                    "id": hashlib.sha256(f"{key[0]}|{key[1]}".encode("utf-8")).hexdigest()[:16],
+                    "filePath": key[0],
+                    "hash": key[1],
+                    "status": "queued",
+                    "createdAt": now,
+                    "updatedAt": now,
+                    "error": None,
+                    "outputPath": None,
+                }
+            )
+            changed = True
     if changed:
         save_jobs(data)
     return data
@@ -734,21 +817,22 @@ def sync_jobs(config: dict, state: dict) -> dict:
 def build_prompt(config: dict, path: Path, text: str) -> str:
     rel = path.relative_to(Path(config["vaultRoot"])).as_posix()
     output = config.get("output", {})
-    language = output.get("language", "en-US")
+    language = output.get("language", "zh-CN")
     analysis_prompt = repair_mojibake_text(output.get("analysisPrompt") or DEFAULT_ANALYSIS_PROMPT)
     return "\n".join(
         [
             "You maintain an Obsidian vault for scientific literature and research knowledge management.",
             "The vault focuses on LLM research, phonon/lattice-dynamics research, materials science, and adjacent computational research.",
-            f"Output language: {language}.",
+            f"Output language: {language}. Use Chinese by default unless the source explicitly requires another language.",
             f"Vault-specific analysis instructions: {analysis_prompt}",
-            "Follow the output contract strictly. Keep all Markdown section headings exactly as specified below, even when the chosen content language is not English.",
+            "Follow the output contract strictly. Keep all Markdown section headings exactly as specified below, even when writing the content in Chinese.",
             "Use concise, information-dense bullets. Prefer source-grounded evidence over generic summaries.",
             "Create a structured Obsidian Markdown literature note from the source content.",
             "Be precise, evidence-aware, and useful for future research synthesis.",
             "Do not invent metadata. If a field is missing, write 'Not found in extracted text'.",
             "Use wiki links for reusable concepts, e.g. [[wiki/concepts/Phonon]], [[wiki/concepts/Thermal Conductivity]].",
             "Preserve figure/table references if present in the text, and mention associated image paths when visible.",
+            "If the source content contains Markdown image links, embed up to 3 key figures under 'Figures And Tables' using the original relative image path, e.g. ![](wiki/assets/example.jpg), followed by a concise Chinese note explaining what the figure shows and why it matters.",
             "",
             "Use this exact structure:",
             "---",
@@ -825,6 +909,104 @@ def build_prompt(config: dict, path: Path, text: str) -> str:
             text,
         ]
     )
+
+
+def extract_key_images(source_text: str, limit: int = 3) -> list[dict[str, str]]:
+    lines = source_text.splitlines()
+    candidates: list[dict[str, str]] = []
+    image_pattern = re.compile(r"!\[\[([^\]]+)\]\]|!\[[^\]]*\]\(([^)]+)\)")
+    media_suffixes = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg")
+
+    for index, line in enumerate(lines):
+        match = image_pattern.search(line)
+        if not match:
+            continue
+        image_path = normalize_image_path((match.group(1) or match.group(2)).strip())
+        if not image_path.lower().split("?", 1)[0].endswith(media_suffixes):
+            continue
+        context_parts: list[str] = []
+        for lookahead in range(index + 1, min(index + 5, len(lines))):
+            candidate = lines[lookahead].strip()
+            if not candidate:
+                continue
+            if image_pattern.search(candidate):
+                break
+            context_parts.append(candidate)
+            if len(" ".join(context_parts)) > 260:
+                break
+        context = " ".join(context_parts).strip()
+        score = 0
+        lowered = context.lower()
+        if re.search(r"\bfig(?:ure)?\.?\s*\d+|图\s*\d+", context, flags=re.I):
+            score += 5
+        if any(term in lowered for term in ["schematic", "mechanism", "result", "thermal", "phonon", "conductivity", "pdos", "vdos", "tbc"]):
+            score += 2
+        candidates.append({"path": image_path, "context": context[:360], "score": str(score), "order": str(index)})
+
+    candidates.sort(key=lambda item: (-int(item["score"]), int(item["order"])))
+    unique: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for item in candidates:
+        if item["path"] in seen:
+            continue
+        seen.add(item["path"])
+        unique.append(item)
+        if len(unique) >= limit:
+            break
+    return unique
+
+
+def normalize_image_path(path: str) -> str:
+    clean = path.replace("\\", "/").strip()
+    clean = re.sub(r"^/?images/", "", clean)
+    marker = "wiki/assets/"
+    if clean.count(marker) > 1:
+        clean = marker + clean.rsplit(marker, 1)[1]
+    return clean
+
+
+def chinese_figure_caption(context: str, index: int) -> str:
+    figure_match = re.search(r"\bFig(?:ure)?\.?\s*(\d+)|图\s*(\d+)", context, flags=re.I)
+    figure = figure_match.group(1) or figure_match.group(2) if figure_match else str(index)
+    lowered = context.lower()
+    if any(term in lowered for term in ["thermal boundary", "tbc", "conductance", "conductivity"]):
+        return f"Fig. {figure}：热边界导热或热导率结果，展示不同频率、结构或温度条件下的热输运贡献。"
+    if any(term in lowered for term in ["molecular", "md", "pdos", "dos", "density"]):
+        return f"Fig. {figure}：分子动力学或声子态密度分析，展示界面附近原子振动态密度与界面声子模式。"
+    if any(term in lowered for term in ["raman", "eels", "haadf", "interfacial mode"]):
+        return f"Fig. {figure}：空间分辨 Raman/EELS 等表征结果，用于识别界面局域声子模式及其频率分布。"
+    if any(term in lowered for term in ["schematic", "diagram", "structure", "microstructure"]):
+        return f"Fig. {figure}：结构示意图或微观形貌图，用于说明样品结构、界面构型或实验/模拟体系。"
+    return f"Fig. {figure}：原文关键图，展示论文中的主要证据或机制；具体含义需结合正文和原图核对。"
+
+
+def enrich_markdown_with_key_figures(markdown: str, source_text: str) -> str:
+    if "### Key Figure Gallery" in markdown:
+        return markdown
+    images = extract_key_images(source_text)
+    if not images:
+        return markdown
+
+    body = ["### Key Figure Gallery", ""]
+    for index, item in enumerate(images, start=1):
+        body.extend(
+            [
+                f"#### Key Figure {index}",
+                "",
+                f"![[{item['path']}]]",
+                "",
+                f"- 中文图注：{chinese_figure_caption(item['context'], index)}",
+                "",
+            ]
+        )
+    gallery = "\n".join(body).rstrip()
+
+    bounds = re.search(r"^## Figures And Tables\s*$", markdown, flags=re.MULTILINE)
+    if not bounds:
+        return markdown.rstrip() + "\n\n## Figures And Tables\n\n" + gallery + "\n"
+    next_section = re.search(r"^## .+$", markdown[bounds.end() :], flags=re.MULTILINE)
+    insert_at = bounds.end() + next_section.start() if next_section else len(markdown)
+    return markdown[:insert_at].rstrip() + "\n\n" + gallery + "\n\n" + markdown[insert_at:].lstrip()
 
 
 def update_literature_index(config: dict, output_path: Path, markdown: str) -> None:
@@ -922,7 +1104,7 @@ def extract_model_content(data: dict) -> str:
     return ""
 
 
-def call_model(config: dict, prompt: str) -> str:
+def call_model(config: dict, prompt: str, *, max_tokens: int | None = None, temperature: float | None = None) -> str:
     model = config["model"]
     api_key = model.get("apiKey") or os.environ.get(model.get("apiKeyEnv", ""))
     base_url = model["baseUrl"]
@@ -931,8 +1113,8 @@ def call_model(config: dict, prompt: str) -> str:
 
     body = {
         "model": model["model"],
-        "temperature": model.get("temperature", 0.2),
-        "max_tokens": model.get("maxTokens", 1800),
+        "temperature": model.get("temperature", 0.2) if temperature is None else temperature,
+        "max_tokens": model.get("maxTokens", 1800) if max_tokens is None else max_tokens,
         "messages": [
             {"role": "system", "content": "You are a careful scientific knowledge-base curator."},
             {"role": "user", "content": prompt},
@@ -1114,6 +1296,80 @@ def answer_question(config: dict, question: str) -> dict:
     return {"answer": call_model(config, prompt), "sources": [{"path": item["path"], "score": item["score"]} for item in contexts]}
 
 
+PET_FALLBACK_LINES = [
+    "我把知识链路舔顺了。",
+    "今天也在巡逻文献。",
+    "新论文可以拖给我。",
+    "等队列空了我再整理。",
+    "我刚刚看了一眼图谱。",
+]
+
+
+def pet_line(config: dict) -> dict:
+    prompt = (
+        "请为一个像素风科研桌面宠物猫写一句中文短台词。"
+        "要求：可爱、克制、像游戏 NPC；不超过 16 个中文字符；"
+        "主题围绕文献、知识库、图谱、整理、等待队列；只输出一句台词。"
+    )
+    try:
+        line = call_model(config, prompt, max_tokens=40, temperature=0.9)
+        line = re.sub(r"[\r\n\"“”]+", "", line).strip()
+        if not line or len(line) > 24:
+            raise RuntimeError("pet line out of bounds")
+        return {"ok": True, "line": line, "source": "model"}
+    except Exception as error:
+        log("pet line fallback used", error=str(error))
+        return {"ok": True, "line": random.choice(PET_FALLBACK_LINES), "source": "fallback"}
+
+
+def active_queue_jobs(config: dict | None = None, enqueue_missing: bool = False) -> list[dict]:
+    raw = config or load_config()
+    state = load_state()
+    jobs = sync_jobs(raw, state, enqueue_missing=enqueue_missing).get("jobs", [])
+    return [job for job in jobs if job.get("status") in {"queued", "running"}]
+
+
+def run_vault_pipeline(config: dict, require_idle: bool = True) -> dict:
+    if require_idle and (STATUS.get("processing") or active_queue_jobs(config, enqueue_missing=True)):
+        raise RuntimeError("文献解析队列尚未完成，请等待 queued/running 任务结束后再运行维护。")
+
+    vault_root = Path(config.get("vaultRoot", "")).resolve()
+    script = vault_root / "tools" / "run_pipeline.py"
+    if not vault_root.exists():
+        raise RuntimeError(f"vaultRoot does not exist: {vault_root}")
+    if not script.exists():
+        raise RuntimeError(f"pipeline script not found: {script}")
+    if not is_inside(vault_root, script):
+        raise RuntimeError(f"refusing to run script outside vault: {script}")
+
+    started = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    result = subprocess.run(
+        [sys.executable, str(script)],
+        cwd=str(vault_root),
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=300,
+        check=False,
+    )
+    finished = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    log(
+        "vault pipeline completed" if result.returncode == 0 else "vault pipeline failed",
+        returnCode=result.returncode,
+        vaultRoot=str(vault_root),
+    )
+    return {
+        "ok": result.returncode == 0,
+        "returnCode": result.returncode,
+        "startedAt": started,
+        "finishedAt": finished,
+        "vaultRoot": str(vault_root),
+        "stdout": result.stdout[-12000:],
+        "stderr": result.stderr[-12000:],
+    }
+
+
 def extract_json_object(text: str) -> dict:
     clean = text.strip()
     if clean.startswith("```"):
@@ -1126,28 +1382,28 @@ def extract_json_object(text: str) -> dict:
     return json.loads(clean)
 
 
-def design_architecture(config: dict, requirements: str, language: str = "en-US") -> dict:
+def design_architecture(config: dict, requirements: str, language: str = "zh-CN") -> dict:
     fallback = default_architecture_plan(requirements, language)
     prompt = "\n".join(
         [
-            "You are a knowledge-base architect designing an Obsidian wiki that will be maintained by a local LLM agent.",
-            "Return one valid JSON object only. Do not return Markdown outside the JSON object. Do not explain.",
-            f"Use this output language for user-facing wiki content: {language}.",
+            "你是科研知识库架构师，正在为一个 Obsidian + LLM 自动维护的本地知识库设计初始化结构。",
+            "请根据用户需求输出一个可直接落地的 JSON 对象。不要输出 Markdown，不要解释。",
+            "语言必须优先使用中文。",
             "",
             "JSON schema:",
             "{",
-            '  "language": "en-US",',
-            '  "summary": "one-sentence positioning of the wiki",',
+            '  "language": "zh-CN",',
+            '  "summary": "一句话说明知识库定位",',
             '  "folders": ["wiki/sources", "wiki/concepts", "..."],',
-            '  "home": "complete Markdown content for Home.md",',
-            '  "mapOfContents": "complete Markdown content for Map of Contents.md",',
-            '  "analysisPrompt": "the system prompt used later to analyze sources; preserve sources and support research knowledge management"',
+            '  "home": "Home.md 的完整 Markdown 内容",',
+            '  "mapOfContents": "Map of Contents.md 的完整 Markdown 内容",',
+            '  "analysisPrompt": "后续分析来源材料时应使用的系统化提示词，要求中文输出、保留来源、适合科研知识管理"',
             "}",
             "",
-            "Required folders: wiki/sources, wiki/concepts, wiki/syntheses, wiki/questions, raw, ingest, inbox, templates.",
-            "Do not use absolute paths. Do not use .. paths. Keep folder names Obsidian-friendly.",
+            "必须包含这些基础目录：wiki/sources, wiki/concepts, wiki/syntheses, wiki/questions, raw, ingest, inbox, templates。",
+            "不要使用绝对路径。不要使用 ..。目录名保持 Obsidian 友好。",
             "",
-            "User requirements:",
+            "用户需求：",
             requirements.strip() or fallback["summary"],
         ]
     )
@@ -1185,6 +1441,7 @@ def process_file(config: dict, state: dict, item: dict) -> None:
     output_path = unique_note_path(output_dir, title)
     if not is_inside(Path(config["vaultRoot"]), output_path):
         raise RuntimeError(f"refusing to write outside vault: {output_path}")
+    markdown = enrich_markdown_with_key_figures(markdown, text)
     markdown = expand_research_graph(config, output_path, markdown)
     output_path.write_text(markdown.strip() + "\n", encoding="utf-8")
     update_literature_index(config, output_path, markdown)
@@ -1222,7 +1479,7 @@ def run_worker() -> None:
 def _run_once_locked() -> None:
     config = load_config()
     state = load_state()
-    jobs_data = sync_jobs(config, state)
+    jobs_data = sync_jobs(config, state, enqueue_missing=True)
     jobs = [job for job in jobs_data["jobs"] if job.get("status") in {"queued", "running"}]
     for job in jobs:
         if job.get("status") == "running":
@@ -1233,6 +1490,8 @@ def _run_once_locked() -> None:
     STATUS["lastRunAt"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
     log("scan complete", pending=len(jobs))
 
+    batch_errors = False
+    processed_any = False
     for index, job in enumerate(jobs):
         try:
             STATUS["pending"] = len(jobs) - index
@@ -1241,6 +1500,7 @@ def _run_once_locked() -> None:
             job["updatedAt"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
             save_jobs(jobs_data)
             output_path = process_file(config, state, {"filePath": job["filePath"], "hash": job["hash"]})
+            processed_any = True
             job["status"] = "done"
             job["outputPath"] = output_path
             job["updatedAt"] = time.strftime("%Y-%m-%dT%H:%M:%S%z")
@@ -1249,6 +1509,7 @@ def _run_once_locked() -> None:
             write_json(STATE_PATH, state)
             save_jobs(jobs_data)
         except Exception as error:
+            batch_errors = True
             message = str(error)
             job["status"] = "failed"
             job["error"] = message
@@ -1263,10 +1524,27 @@ def _run_once_locked() -> None:
     STATUS["queueLength"] = 0
     STATUS["processing"] = False
     STATUS["activeFile"] = None
+    if (
+        processed_any
+        and not batch_errors
+        and not config.get("dryRun", True)
+        and config.get("maintenance", {}).get("autoRunAfterQueue", True)
+    ):
+        STATUS["lastMessage"] = "文献队列已完成，正在运行知识库维护"
+        try:
+            run_vault_pipeline(config, require_idle=False)
+            STATUS["lastMessage"] = "文献队列已完成，知识库维护已完成"
+        except Exception as error:
+            STATUS["lastMessage"] = "文献队列已完成，但知识库维护失败"
+            STATUS.setdefault("errors", []).append(str(error))
+            log("auto maintenance failed", error=str(error))
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self) -> None:
+        if self.path.startswith("/images/") or self.path.startswith("/vault/") or self.path.startswith("/wiki/assets/"):
+            self.serve_vault_asset()
+            return
         if self.path == "/api/status":
             refresh_queue_status()
             STATUS["jobs"] = load_jobs().get("jobs", [])[-20:]
@@ -1277,6 +1555,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             return
         if self.path == "/api/vault-status":
             self.send_json(vault_status())
+            return
+        if self.path == "/api/pet-line":
+            self.send_json(pet_line(load_config()))
             return
         if self.path.startswith("/api/search"):
             query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query).get("q", [""])[0]
@@ -1323,6 +1604,9 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         if self.path == "/api/ask":
             self.handle_ask()
             return
+        if self.path == "/api/run-vault-pipeline":
+            self.handle_run_vault_pipeline()
+            return
         self.send_error(404)
 
     def handle_ask(self) -> None:
@@ -1332,6 +1616,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
             self.send_error(400, "question is required")
             return
         self.send_json(answer_question(load_config(), question))
+
+    def handle_run_vault_pipeline(self) -> None:
+        payload = self.read_json_payload()
+        if payload.get("confirm") is not True:
+            self.send_error(400, "confirmation is required")
+            return
+        try:
+            self.send_json(run_vault_pipeline(load_config()))
+        except Exception as error:
+            self.send_json({"ok": False, "error": str(error)})
 
     def handle_setup_vault(self) -> None:
         payload = self.read_json_payload()
@@ -1344,7 +1638,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def handle_design_vault(self) -> None:
         payload = self.read_json_payload()
         requirements = payload.get("requirements", "")
-        language = payload.get("language", "en-US")
+        language = payload.get("language", "zh-CN")
         self.send_json({"ok": True, "architecture": design_architecture(load_config(), requirements, language)})
 
     def handle_config_update(self) -> None:
@@ -1356,9 +1650,25 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                 config[key] = payload[key]
         if "model" in payload:
             config.setdefault("model", {})
-            for key in ["externalConfig", "baseUrl", "model", "temperature", "maxTokens"]:
+            for key in [
+                "externalConfig",
+                "providerName",
+                "baseUrl",
+                "apiKeyEnv",
+                "apiKey",
+                "model",
+                "temperature",
+                "maxTokens",
+                "timeoutSeconds",
+                "enableThinking",
+            ]:
                 if key in payload["model"]:
                     config["model"][key] = payload["model"][key]
+        if "maintenance" in payload:
+            config.setdefault("maintenance", {})
+            for key in ["autoRunAfterQueue"]:
+                if key in payload["maintenance"]:
+                    config["maintenance"][key] = payload["maintenance"][key]
         if "output" in payload:
             config.setdefault("output", {})
             for key in ["sourceNotesFolder", "questionsFolder", "language", "analysisPrompt"]:
@@ -1463,6 +1773,32 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def serve_vault_asset(self) -> None:
+        config = load_config()
+        vault_root = Path(config["vaultRoot"]).resolve()
+        parsed = urllib.parse.urlparse(self.path)
+        if parsed.path.startswith("/images/"):
+            prefix = "/images/"
+        elif parsed.path.startswith("/vault/"):
+            prefix = "/vault/"
+        else:
+            prefix = "/"
+        rel = urllib.parse.unquote(parsed.path[len(prefix):]).lstrip("/\\")
+        target = (vault_root / rel).resolve()
+        if not is_inside(vault_root, target) or not target.is_file():
+            self.send_error(404)
+            return
+        content_type = {
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".gif": "image/gif",
+            ".webp": "image/webp",
+            ".svg": "image/svg+xml",
+            ".bmp": "image/bmp",
+        }.get(target.suffix.lower(), "application/octet-stream")
+        self.serve_file(target, content_type)
+
     def log_message(self, format: str, *args: object) -> None:
         return
 
@@ -1476,14 +1812,18 @@ def loop(interval_seconds: int) -> None:
             log("run failed", error=str(error))
 
 
+class ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+    allow_reuse_address = True
+    daemon_threads = True
+
+
 def main() -> None:
     config = load_config()
     worker = threading.Thread(target=loop, args=(int(config.get("intervalSeconds", 300)),), daemon=True)
     worker.start()
 
-    with socketserver.TCPServer((config.get("host", "127.0.0.1"), int(config.get("port", 4317))), Handler) as server:
+    with ThreadingTCPServer((config.get("host", "127.0.0.1"), int(config.get("port", 4317))), Handler) as server:
         log("server started", url=f"http://{config.get('host', '127.0.0.1')}:{config.get('port', 4317)}")
-        request_run()
         server.serve_forever()
 
 

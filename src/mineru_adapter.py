@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import time
@@ -135,9 +136,29 @@ def _rewrite_asset_links(md_path: Path, source_root: Path, asset_root: Path, not
         replacements[asset.name] = rel_from_vault
         replacements[asset.relative_to(source_root).as_posix()] = rel_from_vault
 
-    for old, new in replacements.items():
+    for old, new in sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True):
         text = text.replace(old, new)
-    return text
+    return _normalize_markdown_image_embeds(text)
+
+
+def _normalize_markdown_image_embeds(text: str) -> str:
+    media_suffixes = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg")
+
+    def repl(match: re.Match[str]) -> str:
+        path = match.group(2).replace("\\", "/").strip().strip("<>").strip()
+        clean = path.split("#", 1)[0].split("?", 1)[0].lower()
+        if not clean.endswith(media_suffixes) or "wiki/assets/" not in path:
+            return match.group(0)
+        marker = "wiki/assets/"
+        if path.count(marker) > 1:
+            path = marker + path.rsplit(marker, 1)[1]
+        return f"![[{path}]]"
+
+    image_pattern = re.compile(
+        r"!\[([^\]]*)\]\((.*?\.(?:png|jpg|jpeg|gif|webp|bmp|svg)(?:[?#][^\s)]*)?)\)",
+        flags=re.IGNORECASE,
+    )
+    return image_pattern.sub(repl, text)
 
 
 def parse_pdf_with_mineru(file_path: str | Path, config: dict, vault_root: str | Path) -> Path:

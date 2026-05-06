@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -7,184 +7,206 @@
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <div class="app">
-      <aside class="rail" aria-label="Wiki Cat navigation">
-        <div class="mark" aria-hidden="true">
-          <span class="mark-ear left"></span>
-          <span class="mark-ear right"></span>
-          <span class="mark-eye left"></span>
-          <span class="mark-eye right"></span>
-        </div>
-        <nav class="nav">
-          <button class="nav-item active" type="button" data-view="setup">Setup</button>
-          <button class="nav-item" type="button" data-view="feed">Feed</button>
-          <button class="nav-item" type="button" data-view="ask">Ask</button>
-          <button class="nav-item" type="button" data-view="settings">Settings</button>
+    <div class="app-shell">
+      <aside class="side-rail" aria-label="Wiki Cat navigation">
+        <div class="brand-mark" aria-hidden="true">W</div>
+        <nav class="rail-nav">
+          <a href="#onboarding">&#21521;&#23548;</a>
+          <a href="#overview">&#24635;&#35272;</a>
+          <a href="#ingest">&#20837;&#24211;</a>
+          <a href="#ask">&#38382;&#31572;</a>
+          <a href="#settings">&#35774;&#32622;</a>
         </nav>
       </aside>
 
-      <main class="main">
-        <header class="hero">
+      <main class="workspace">
+        <section class="onboarding-panel" id="onboarding">
+          <div class="onboarding-copy">
+            <p class="eyebrow">Vault Setup</p>
+            <h2>&#24314;&#31435;&#20320;&#30340;&#31185;&#30740;&#30693;&#35782;&#24211;</h2>
+            <p>&#36873;&#25321;&#25110;&#36755;&#20837;&#19968;&#20010;&#25991;&#20214;&#22841;&#65292;&#20877;&#29992;&#19968;&#27573;&#35805;&#25551;&#36848;&#20320;&#30340;&#30740;&#31350;&#38656;&#27714;&#12290;&#23567;&#29483;&#20250;&#35831;&#22823;&#27169;&#22411;&#20808;&#35774;&#35745;&#26550;&#26500;&#65292;&#20320;&#26816;&#26597;&#20462;&#25913;&#21518;&#20877;&#21019;&#24314;&#12290;</p>
+          </div>
+          <form class="onboarding-form" id="onboardingForm">
+            <label class="wide">
+              Knowledge Vault Folder
+              <input id="setupVaultRoot" name="setupVaultRoot" placeholder="E:\Research\My_Knowledge_Vault" />
+            </label>
+            <label>
+              Output Language
+              <select id="setupLanguage" name="setupLanguage">
+                <option value="zh-CN">&#40664;&#35748;&#20013;&#25991;</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <label class="wide">
+              &#20320;&#30340;&#30693;&#35782;&#24211;&#38656;&#27714;
+              <textarea id="setupRequirements" rows="5" placeholder="&#20363;&#22914;&#65306;&#25105;&#35201;&#31649;&#29702; LLM &#19982;&#22768;&#23376;&#23548;&#28909;&#26448;&#26009;&#25991;&#29486;&#65292;&#24076;&#26395;&#25353;&#26448;&#26009;&#20307;&#31995;&#12289;&#26041;&#27861;&#12289;&#35777;&#25454;&#38142;&#12289;&#21487;&#22797;&#29992;&#27010;&#24565;&#21644;&#21518;&#32493;&#23454;&#39564;&#38382;&#39064;&#24314;&#31435;&#22270;&#35889;&#12290;"></textarea>
+            </label>
+            <div class="onboarding-actions">
+              <button id="designVault" type="button">&#29983;&#25104;&#26550;&#26500;&#33609;&#26696;</button>
+              <button id="createVault" class="ghost-button" type="submit">&#30830;&#35748;&#24182;&#21019;&#24314;</button>
+            </div>
+            <label class="wide">
+              &#26550;&#26500;&#33609;&#26696;
+              <textarea id="architectureDraft" class="code-textarea" rows="12" spellcheck="false"></textarea>
+            </label>
+          </form>
+        </section>
+
+        <header class="topbar">
           <div>
             <p class="eyebrow">Wiki Cat</p>
-            <h1>A tiny desktop pet for an LLM-maintained Obsidian wiki.</h1>
+            <h1>&#31185;&#30740;&#30693;&#35782;&#24211;&#24037;&#20316;&#21488;</h1>
           </div>
-          <dl class="status-strip">
-            <div><dt>Mode</dt><dd id="mode">-</dd></div>
-            <div><dt>Queue</dt><dd id="pending">0</dd></div>
-            <div><dt>Processed</dt><dd id="processed">0</dd></div>
-          </dl>
+          <div class="topbar-status">
+            <span id="mode">-</span>
+            <strong id="mood">&#27491;&#22312;&#30475;&#30693;&#35782;&#24211;</strong>
+          </div>
         </header>
 
-        <section class="view active" id="view-setup">
-          <div class="split">
-            <section class="panel intro-panel">
-              <p class="eyebrow">First run</p>
-              <h2>Design the wiki before creating it.</h2>
-              <p>Pick a vault folder, describe what kind of knowledge base you want, ask your model for a proposed architecture, edit the draft, then create the Obsidian-ready wiki.</p>
-              <p class="message" id="message">Starting...</p>
-            </section>
-
-            <form class="panel form-grid" id="onboardingForm">
-              <label class="wide">
-                Vault folder
-                <input id="setupVaultRoot" name="setupVaultRoot" placeholder="C:\Research\wiki-cat-vault" />
-              </label>
-              <label>
-                Default language
-                <select id="setupLanguage" name="setupLanguage">
-                  <option value="en-US">English</option>
-                  <option value="zh-CN">Chinese</option>
-                </select>
-              </label>
-              <label class="wide">
-                What should this wiki manage?
-                <textarea id="setupRequirements" rows="5" placeholder="Example: Papers, notes, and web clippings about AI agents, polymer thermal interfaces, phonons, methods, evidence chains, and open research questions."></textarea>
-              </label>
-              <div class="button-row wide">
-                <button id="designVault" type="button">Generate architecture</button>
-                <button id="createVault" class="secondary" type="submit">Create wiki</button>
-              </div>
-              <label class="wide">
-                Architecture draft
-                <textarea id="architectureDraft" class="code" rows="12" spellcheck="false"></textarea>
-              </label>
-            </form>
+        <section class="overview-panel" id="overview">
+          <div class="overview-copy">
+            <p class="eyebrow">&#26412;&#22320;&#26234;&#33021;&#20307;</p>
+            <h2>&#20174;&#25991;&#29486;&#21040; Obsidian &#30693;&#35782;&#22270;&#35889;</h2>
+            <p id="message">&#21551;&#21160;&#20013;</p>
+            <div class="pipeline-action">
+              <button id="runVaultPipeline" type="button">&#36816;&#34892;&#30693;&#35782;&#24211;&#32500;&#25252;</button>
+              <span id="pipelineStatus">&#20108;&#27425;&#33976;&#39311;&#12289;&#23548;&#33322;&#26356;&#26032;&#19982;&#23457;&#35745;&#26816;&#26597;</span>
+            </div>
           </div>
+          <dl class="metric-grid">
+            <div>
+              <dt>&#19978;&#27425;&#25195;&#25551;</dt>
+              <dd id="lastRun">-</dd>
+            </div>
+            <div>
+              <dt>&#26412;&#27425;&#22788;&#29702;</dt>
+              <dd id="processed">0</dd>
+            </div>
+            <div>
+              <dt>&#24453;&#22788;&#29702;</dt>
+              <dd id="pending">0</dd>
+            </div>
+          </dl>
         </section>
 
-        <section class="view" id="view-feed">
-          <div class="workbench">
-            <section class="panel feed-card">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">Feed</p>
-                  <h2>Drop sources onto the cat.</h2>
-                </div>
-                <button id="runNow" class="secondary" type="button">Run queue</button>
-              </div>
-              <div class="drop-zone" id="dropZone" aria-label="Drop files onto Wiki Cat">
-                <div class="cat" id="cat" aria-hidden="true">
-                  <div class="ear left"></div>
-                  <div class="ear right"></div>
-                  <div class="head">
-                    <div class="eye left"></div>
-                    <div class="eye right"></div>
-                    <div class="muzzle"></div>
-                    <div class="mouth"></div>
-                    <div class="whisker w1"></div>
-                    <div class="whisker w2"></div>
-                    <div class="whisker w3"></div>
-                    <div class="whisker w4"></div>
-                  </div>
-                  <div class="body"></div>
-                  <div class="tail"></div>
-                </div>
-                <div class="drop-copy">
-                  <strong>PDFs, Markdown, text, links, or copied conversations.</strong>
-                  <span>Wiki Cat queues each source, parses it, asks your model to curate it, then writes durable notes into your Obsidian wiki.</span>
-                </div>
-              </div>
-              <div class="actions">
-                <label class="file-button">
-                  <input id="fileInput" type="file" multiple accept=".pdf,.md,.txt" />
-                  Choose files
-                </label>
-                <div class="queue-line">
-                  <span>Queue length</span>
-                  <strong id="queueMirror">0</strong>
-                </div>
-              </div>
-            </section>
-
-            <aside class="panel guide-card">
-              <p class="eyebrow">Flow</p>
-              <ol class="steps">
-                <li>Feed a source to the cat.</li>
-                <li>Review queue status locally.</li>
-                <li>Open the generated source note in Obsidian.</li>
-                <li>Ask across the curated wiki.</li>
-              </ol>
-            </aside>
-          </div>
-        </section>
-
-        <section class="view" id="view-ask">
-          <div class="split">
-            <section class="panel qa-panel">
-              <p class="eyebrow">Ask</p>
-              <h2>Chat with the wiki, grounded in notes.</h2>
-              <form id="askForm" class="ask-form">
-                <textarea id="question" rows="6" placeholder="What mechanisms improve thermal conductivity at polymer interfaces?"></textarea>
-                <button type="submit">Ask Wiki Cat</button>
-              </form>
-              <pre id="answer" class="answer"></pre>
-            </section>
-            <section class="panel intro-panel">
-              <p class="eyebrow">Retrieval</p>
-              <h2>Hybrid lexical search.</h2>
-              <p>Questions are matched against Obsidian Markdown using English terms, CJK n-grams, title weighting, path weighting, and a small bilingual scientific synonym map. The answer cites the retrieved notes.</p>
-            </section>
-          </div>
-        </section>
-
-        <section class="view" id="view-settings">
-          <section class="panel">
+        <section class="content-grid">
+          <section class="panel ingest-panel" id="ingest">
             <div class="section-head">
               <div>
-                <p class="eyebrow">Settings</p>
-                <h2>Paths, model, parser, and prompts.</h2>
+                <p class="eyebrow">&#25991;&#29486;&#38431;&#21015;</p>
+                <h2>&#25237;&#21890;&#19982;&#35299;&#26512;</h2>
+              </div>
+              <button id="runNow" class="ghost-button" type="button">&#31435;&#21363;&#25972;&#29702;</button>
+            </div>
+
+            <div class="drop-zone" id="dropZone" aria-label="Wiki Cat file drop zone">
+              <div class="cat" id="cat" aria-hidden="true">
+                <div class="ear left"></div>
+                <div class="ear right"></div>
+                <div class="head">
+                  <div class="eye left"></div>
+                  <div class="eye right"></div>
+                  <div class="muzzle"></div>
+                  <div class="mouth"></div>
+                  <div class="whisker w1"></div>
+                  <div class="whisker w2"></div>
+                  <div class="whisker w3"></div>
+                  <div class="whisker w4"></div>
+                </div>
+                <div class="body"></div>
+                <div class="tail"></div>
+              </div>
+              <div class="drop-copy">
+                <strong>&#25226; PDF / MD / TXT &#25237;&#21890;&#32473;&#23567;&#29483;</strong>
+                <span>&#25991;&#20214;&#20250;&#20808;&#36827;&#20837;&#38431;&#21015;&#65292;&#20877;&#36880;&#20010;&#35299;&#26512;&#20026;&#31185;&#30740;&#31508;&#35760;&#21644;&#27010;&#24565;&#38142;&#25509;&#12290;</span>
               </div>
             </div>
-            <form id="settingsForm" class="settings-form">
-              <label class="wide">Vault root <input id="vaultRoot" name="vaultRoot" /></label>
-              <label class="wide">External model config <input id="externalConfig" name="externalConfig" /></label>
-              <label>
-                Output language
-                <select id="outputLanguage" name="outputLanguage">
-                  <option value="en-US">English</option>
-                  <option value="zh-CN">Chinese</option>
-                </select>
+
+            <div class="actions">
+              <label class="file-button">
+                <input id="fileInput" type="file" multiple accept=".pdf,.md,.txt" />
+                &#36873;&#25321;&#25991;&#20214;
               </label>
-              <label>MinerU API file <input id="mineruApiFile" name="mineruApiFile" /></label>
-              <label>
-                Parse language
-                <select id="mineruLanguage" name="mineruLanguage">
-                  <option value="en">English</option>
-                  <option value="ch">Chinese</option>
-                </select>
-              </label>
-              <label>Scan interval <input id="intervalSeconds" name="intervalSeconds" type="number" min="30" step="30" /></label>
-              <label class="check-row"><input id="dryRun" name="dryRun" type="checkbox" /> Dry run</label>
-              <label class="wide">Analysis prompt <textarea id="analysisPrompt" name="analysisPrompt" rows="4"></textarea></label>
-              <button type="submit">Save settings</button>
-            </form>
+              <div class="queue-line">
+                <span>&#24403;&#21069;&#38431;&#21015;</span>
+                <strong id="queueMirror">0</strong>
+              </div>
+            </div>
           </section>
+
+          <section class="panel qa-panel" id="ask">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Ask Vault</p>
+                <h2>&#22522;&#20110;&#30693;&#35782;&#24211;&#30340;&#38382;&#31572;</h2>
+              </div>
+            </div>
+            <form id="askForm" class="ask-form">
+              <textarea id="question" rows="5" placeholder="&#20363;&#22914;&#65306;&#36825;&#20123;&#25991;&#29486;&#20013;&#24433;&#21709;&#23548;&#28909;&#31995;&#25968;&#30340;&#20851;&#38190;&#26426;&#21046;&#26377;&#21738;&#20123;&#65311;"></textarea>
+              <button type="submit">&#25552;&#38382;</button>
+            </form>
+            <pre id="answer" class="answer"></pre>
+          </section>
+        </section>
+
+        <section class="panel settings-panel" id="settings">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Settings</p>
+              <h2>&#36335;&#24452;&#19982;&#27169;&#22411;</h2>
+            </div>
+          </div>
+          <div class="maintenance-band">
+            <div>
+              <p class="eyebrow">Vault Maintenance</p>
+              <h3>&#25163;&#21160;&#36816;&#34892; pipeline</h3>
+              <p>&#20250;&#25191;&#34892; <code>tools/run_pipeline.py</code>&#65306;&#26631;&#20934;&#21270; source notes&#12289;&#20108;&#27425;&#33976;&#39311; concepts/questions/syntheses&#65292;&#24182;&#36816;&#34892;&#23457;&#35745;&#12290;&#33509;&#38431;&#21015;&#36824;&#26377;&#25991;&#29486;&#27491;&#22312;&#35299;&#26512;&#65292;&#20250;&#20808;&#31561;&#38431;&#21015;&#23436;&#25104;&#12290;</p>
+            </div>
+            <button id="settingsRunVaultPipeline" class="ghost-button" type="button">&#30830;&#35748;&#21518;&#36816;&#34892;</button>
+          </div>
+          <form id="settingsForm" class="settings-form">
+            <label class="wide">Vault Root <input id="vaultRoot" name="vaultRoot" /></label>
+            <label class="wide">LLM Config <input id="externalConfig" name="externalConfig" /></label>
+            <div class="settings-subhead wide">
+              <p class="eyebrow">Model API</p>
+              <h3>&#30452;&#25509;&#37197;&#32622;&#22823;&#27169;&#22411;</h3>
+              <p>&#21487;&#20197;&#20445;&#30041;&#19978;&#38754;&#30340;&#33258;&#23450;&#20041; JSON&#65307;&#20063;&#21487;&#20197;&#22312;&#36825;&#37324;&#30452;&#25509;&#22635;&#20889;&#24182;&#20445;&#23384;&#12290;&#33509;&#33258;&#23450;&#20041; JSON &#23384;&#22312;&#65292;&#36816;&#34892;&#26102;&#20250;&#25353;&#21407;&#26377;&#35268;&#21017;&#21512;&#24182;&#29983;&#25928;&#12290;</p>
+            </div>
+            <label>Provider <input id="providerName" name="providerName" placeholder="openai-compatible" /></label>
+            <label class="wide">Base URL <input id="baseUrl" name="baseUrl" placeholder="https://api.openai.com/v1/chat/completions" /></label>
+            <label>Model <input id="modelName" name="modelName" placeholder="gpt-4.1-mini" /></label>
+            <label>API Key Env <input id="apiKeyEnv" name="apiKeyEnv" placeholder="OPENAI_API_KEY" /></label>
+            <label class="wide">API Key <input id="apiKey" name="apiKey" type="password" autocomplete="off" placeholder="可留空，优先使用环境变量或自定义 JSON" /></label>
+            <label>Temperature <input id="temperature" name="temperature" type="number" min="0" max="2" step="0.1" /></label>
+            <label>Max Tokens <input id="maxTokens" name="maxTokens" type="number" min="256" step="256" /></label>
+            <label>Timeout Seconds <input id="timeoutSeconds" name="timeoutSeconds" type="number" min="30" step="30" /></label>
+            <label>
+              Output Language
+              <select id="outputLanguage" name="outputLanguage">
+                <option value="zh-CN">&#40664;&#35748;&#20013;&#25991;</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <label>MinerU API File <input id="mineruApiFile" name="mineruApiFile" /></label>
+            <label>
+              Parse Language
+              <select id="mineruLanguage" name="mineruLanguage">
+                <option value="ch">&#20013;&#25991;</option>
+                <option value="en">English</option>
+              </select>
+            </label>
+            <label>Scan Interval <input id="intervalSeconds" name="intervalSeconds" type="number" min="30" step="30" /></label>
+            <label class="check-row"><input id="dryRun" name="dryRun" type="checkbox" /> Dry run</label>
+            <label class="check-row"><input id="enableThinking" name="enableThinking" type="checkbox" /> Enable thinking</label>
+            <label class="check-row"><input id="autoRunMaintenance" name="autoRunMaintenance" type="checkbox" /> &#38431;&#21015;&#23436;&#25104;&#21518;&#33258;&#21160;&#32500;&#25252;</label>
+            <label class="wide">Analysis Prompt <textarea id="analysisPrompt" name="analysisPrompt" rows="4"></textarea></label>
+            <button type="submit">&#20445;&#23384;&#35774;&#32622;</button>
+          </form>
         </section>
       </main>
     </div>
-
-    <aside class="quick-dock" id="quickDock" aria-label="Quick access">
+    <aside class="quick-dock" id="quickDock" aria-label="Quick access dock">
       <button class="dock-toggle" id="dockToggle" type="button" aria-expanded="false" aria-controls="dockPanel">
         <span class="dock-logo" aria-hidden="true">
           <span class="dock-logo-book"></span>
@@ -195,17 +217,17 @@
             <span class="dock-logo-eye right"></span>
           </span>
         </span>
-        <span>Wiki Cat</span>
+        <span>&#25511;&#21046;&#26639;</span>
       </button>
       <div class="dock-panel" id="dockPanel">
-        <button type="button" data-view-jump="setup">Setup</button>
-        <button type="button" data-view-jump="feed">Feed sources</button>
-        <button type="button" data-view-jump="ask">Ask wiki</button>
-        <button type="button" data-view-jump="settings">Settings</button>
-        <button id="dockRunNow" type="button">Run queue</button>
+        <a href="#onboarding">&#21021;&#22987;&#21270;&#21521;&#23548;</a>
+        <a href="#overview">&#22238;&#21040;&#20027;&#39029;</a>
+        <a href="#ingest">&#25991;&#29486;&#20837;&#24211;</a>
+        <a href="#ask">&#30693;&#35782;&#24211;&#38382;&#31572;</a>
+        <a href="#settings">&#35774;&#32622;&#32593;&#39029;</a>
+        <button id="dockRunNow" type="button">&#36816;&#34892;&#38431;&#21015;</button>
       </div>
     </aside>
-
     <script src="/pet.js"></script>
   </body>
 </html>

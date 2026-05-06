@@ -12,13 +12,15 @@
     "apiKey": "",
     "model": "gpt-4.1-mini",
     "temperature": 0.2,
-    "maxTokens": 1800
+    "maxTokens": 1800,
+    "timeoutSeconds": 120,
+    "enableThinking": false
   },
   "ingest": {
     "feedFolder": "ingest",
     "folders": ["inbox", "raw"],
     "extensions": [".md", ".txt", ".pdf"],
-    "excludeFolders": ["raw/parsed", "raw/assets", "wiki/assets", "wiki"],
+    "excludeFolders": ["raw/parsed", "raw/mineru-md", "raw/assets", "wiki/assets", "wiki"],
     "maxCharsPerFile": 30000,
     "maxDraggedTextChars": 2000000
   },
@@ -41,6 +43,9 @@
     "questionsFolder": "wiki/questions",
     "language": "en-US",
     "analysisPrompt": "Default to English unless the user chooses another output language. Keep the required Markdown headings unchanged for graph extraction. Detect the source type first: paper, web page, conversation, lab note, dataset, or general note. For papers, extract citation metadata, research problem, materials/systems, methods, data/code, key contributions, evidence chains, figures/tables, equations, limitations, reusable concepts, and follow-up questions. For web pages or conversations, convert them into traceable research notes, concept cards, and action questions. Never invent missing metadata; write Not found in extracted text. Bind every non-obvious claim to a source path, quote-level evidence, figure/table reference, or uncertainty note. Reusable Concepts must be short concept phrases, not full sentences. Follow-Up Questions must be actionable."
+  },
+  "maintenance": {
+    "autoRunAfterQueue": true
   },
   "pet": {
     "name": "Wiki Cat",

@@ -11,6 +11,18 @@ let tray;
 let agentProcess;
 let isQuitting = false;
 
+function resolvePythonCommand() {
+  const candidates = [
+    process.env.WIKI_CAT_PYTHON,
+    process.env.CAT_VAULT_PYTHON,
+    "python"
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    if (candidate === "python" || fs.existsSync(candidate)) return candidate;
+  }
+  return "python";
+}
+
 async function isAgentOnline() {
   try {
     const response = await fetch(`${AGENT_URL}/api/status`);
@@ -18,6 +30,14 @@ async function isAgentOnline() {
   } catch {
     return false;
   }
+}
+
+async function waitForAgentOnline(maxAttempts = 20) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (await isAgentOnline()) return true;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  return false;
 }
 
 async function getVaultStatus() {
@@ -60,7 +80,7 @@ function trayIcon() {
 async function startAgent() {
   if (agentProcess) return;
   if (await isAgentOnline()) return;
-  agentProcess = spawn("python", ["src/agent.py"], {
+  agentProcess = spawn(resolvePythonCommand(), ["src/agent.py"], {
     cwd: ROOT,
     windowsHide: true,
     stdio: "ignore"
@@ -72,8 +92,8 @@ async function startAgent() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 220,
-    height: 260,
+    width: 180,
+    height: 170,
     frame: false,
     transparent: true,
     alwaysOnTop: true,
@@ -184,13 +204,12 @@ ipcMain.handle("open-console", () => shell.openExternal(AGENT_URL));
 
 app.whenReady().then(async () => {
   await startAgent();
-  setTimeout(() => {
-    createWindow();
-    createTray();
-    getVaultStatus().then((status) => {
-      if (!status.ready) chooseKnowledgeVault();
-    });
-  }, 1200);
+  await waitForAgentOnline();
+  createWindow();
+  createTray();
+  getVaultStatus().then((status) => {
+    if (!status.ready) shell.openExternal(`${AGENT_URL}/#onboarding`);
+  });
 });
 
 app.on("window-all-closed", (event) => {
