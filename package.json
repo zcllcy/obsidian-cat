@@ -1,8 +1,8 @@
 {
-  "name": "wiki-cat",
+  "name": "obsidian-cat",
   "version": "0.1.0",
   "private": false,
-  "description": "A pixel cat desktop pet that feeds files, text, and links into an LLM-maintained Obsidian wiki.",
+  "description": "A pixel cat desktop pet that feeds files, text, and links into an LLM-maintained Obsidian vault.",
   "main": "apps/desktop/main.js",
   "scripts": {
     "agent": "python src/agent.py",
@@ -25,8 +25,8 @@
     "electron-builder": "^26.0.0"
   },
   "build": {
-    "appId": "app.wikicat.desktop",
-    "productName": "Wiki Cat",
+    "appId": "app.obsidiancat.desktop",
+    "productName": "Obsidian Cat",
     "asar": false,
     "directories": {
       "output": "dist"
@@ -42,7 +42,7 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "assets/wiki-cat.ico",
+      "icon": "assets/obsidian-cat.ico",
       "signAndEditExecutable": false
     },
     "nsis": {
@@ -50,7 +50,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Wiki Cat"
+      "shortcutName": "Obsidian Cat"
     }
   }
 }

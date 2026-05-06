@@ -18,9 +18,22 @@
   },
   "ingest": {
     "feedFolder": "ingest",
-    "folders": ["inbox", "raw"],
-    "extensions": [".md", ".txt", ".pdf"],
-    "excludeFolders": ["raw/parsed", "raw/mineru-md", "raw/assets", "wiki/assets", "wiki"],
+    "folders": [
+      "inbox",
+      "raw"
+    ],
+    "extensions": [
+      ".md",
+      ".txt",
+      ".pdf"
+    ],
+    "excludeFolders": [
+      "raw/parsed",
+      "raw/mineru-md",
+      "raw/assets",
+      "wiki/assets",
+      "wiki"
+    ],
     "maxCharsPerFile": 30000,
     "maxDraggedTextChars": 2000000
   },
@@ -48,7 +61,7 @@
     "autoRunAfterQueue": true
   },
   "pet": {
-    "name": "Wiki Cat",
+    "name": "Obsidian Cat",
     "mood": "curious"
   }
 }

@@ -24,9 +24,9 @@ from mineru_adapter import parse_pdf_with_mineru
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 CONFIG_PATH = PROJECT_ROOT / "config" / "agent.config.json"
 EXAMPLE_CONFIG_PATH = PROJECT_ROOT / "config" / "agent.config.example.json"
-APP_DATA_DIR = Path(os.environ.get("APPDATA", PROJECT_ROOT)) / "Wiki Cat"
-STATE_DIR = Path(os.environ.get("WIKI_CAT_STATE_DIR", APP_DATA_DIR / "state"))
-LOG_DIR = Path(os.environ.get("WIKI_CAT_LOG_DIR", APP_DATA_DIR / "logs"))
+APP_DATA_DIR = Path(os.environ.get("APPDATA", PROJECT_ROOT)) / "Obsidian Cat"
+STATE_DIR = Path(os.environ.get("OBSIDIAN_CAT_STATE_DIR", os.environ.get("WIKI_CAT_STATE_DIR", APP_DATA_DIR / "state")))
+LOG_DIR = Path(os.environ.get("OBSIDIAN_CAT_LOG_DIR", os.environ.get("WIKI_CAT_LOG_DIR", APP_DATA_DIR / "logs")))
 STATE_PATH = STATE_DIR / "processed.json"
 JOBS_PATH = STATE_DIR / "jobs.json"
 LOG_PATH = LOG_DIR / "agent.log"
@@ -693,7 +693,7 @@ def save_url_to_feed(config: dict, url: str) -> Path:
             "type: web-source",
             f"source_url: {url}",
             f"captured_at: {time.strftime('%Y-%m-%dT%H:%M:%S%z')}",
-            "created_by: Wiki Cat",
+            "created_by: Obsidian Cat",
             "---",
             "",
             f"# {title}",
@@ -733,7 +733,7 @@ def save_text_to_feed(config: dict, text: str, source: str = "dragged-text") -> 
             "type: text-capture",
             f"source: {source}",
             f"captured_at: {time.strftime('%Y-%m-%dT%H:%M:%S%z')}",
-            "created_by: Wiki Cat",
+            "created_by: Obsidian Cat",
             "---",
             "",
             f"# {title}",
@@ -839,7 +839,7 @@ def build_prompt(config: dict, path: Path, text: str) -> str:
             "type: literature-note",
             "status: processed",
             "source_path: <source path>",
-            "created_by: Wiki Cat",
+            "created_by: Obsidian Cat",
             "---",
             "",
             "# <paper title>",

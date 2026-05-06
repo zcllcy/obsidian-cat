@@ -1,10 +1,10 @@
-# Wiki Cat
+# Obsidian Cat
 
-![Wiki Cat logo](assets/wiki-cat.png)
+![Obsidian Cat logo](assets/obsidian-cat.png)
 
-**Wiki Cat turns knowledge management into feeding a desktop pet.**
+**Obsidian Cat turns knowledge management into feeding a desktop pet.**
 
-It is a small desktop app inspired by Andrej Karpathy's LLM knowledge-base pattern: keep raw sources, curate them into Markdown, build durable wiki notes, and retrieve grounded context when asking questions. Wiki Cat wraps that workflow in a playful interaction model: drag a paper, note, link, or copied conversation onto the cat, and it becomes food for your local wiki.
+It is a small desktop app inspired by Andrej Karpathy's LLM knowledge-base pattern: keep raw sources, curate them into Markdown, build durable wiki notes, and retrieve grounded context when asking questions. Obsidian Cat wraps that workflow in a playful interaction model: drag a paper, note, link, or copied conversation onto the cat, and it becomes food for your local Obsidian vault.
 
 The goal is simple: make an LLM-maintained knowledge base feel less like database administration and more like caring for a tiny research companion.
 
@@ -14,7 +14,7 @@ The goal is simple: make an LLM-maintained knowledge base feel less like databas
   Raw sources stay separate from curated notes. The LLM writes structured Markdown into an Obsidian-compatible wiki instead of hiding knowledge inside a chat history.
 
 - **Desktop-pet interaction**  
-  The primary ingest action is feeding the cat. Drop PDFs, Markdown files, copied text, links, or exported conversations onto the pixel pet. Wiki Cat queues them and curates them into the vault.
+  The primary ingest action is feeding the cat. Drop PDFs, Markdown files, copied text, links, or exported conversations onto the pixel pet. Obsidian Cat queues them and curates them into the vault.
 
 - **Interactive one-click deployment flow**  
   The first-run guide asks for a vault folder and a short description of your knowledge needs. It can ask your model to propose a vault architecture, let you edit it, then create the wiki structure automatically.
@@ -23,10 +23,10 @@ The goal is simple: make an LLM-maintained knowledge base feel less like databas
   Notes are plain Markdown. The vault can be opened in Obsidian, edited by hand, synced however you like, and inspected as a real folder tree.
 
 - **Grounded Ask mode**  
-  Wiki Cat retrieves local notes and answers with source paths, so the chat layer remains tied to your wiki rather than becoming another disconnected conversation.
+  Obsidian Cat retrieves local notes and answers with source paths, so the chat layer remains tied to your wiki rather than becoming another disconnected conversation.
 
 - **Background maintenance layer**
-  After a queue finishes, Wiki Cat can run a vault pipeline that normalizes image links, refreshes source-note structure, performs second-pass concept/question distillation, updates synthesis entry points, and writes an audit report.
+  After a queue finishes, Obsidian Cat can run a vault pipeline that normalizes image links, refreshes source-note structure, performs second-pass concept/question distillation, updates synthesis entry points, and writes an audit report.
 
 - **Figure-aware notes**
   Parsed PDF assets are copied into `wiki/assets/<source>/` and source notes can embed key figures with Obsidian-compatible image links.
@@ -64,7 +64,7 @@ templates/      note templates
 
 ## Interface
 
-Wiki Cat has two surfaces:
+Obsidian Cat has two surfaces:
 
 - **The desktop pet**: a small always-on-top pixel cat that accepts drag-and-drop feeding.
 - **The local workbench**: a browser UI for setup, source feeding, question answering, and settings.
@@ -91,7 +91,7 @@ Set an OpenAI-compatible API key:
 $env:OPENAI_API_KEY = "your-key"
 ```
 
-Run Wiki Cat:
+Run Obsidian Cat:
 
 ```powershell
 npm run desktop

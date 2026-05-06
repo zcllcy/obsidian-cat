@@ -70,7 +70,7 @@ async function chooseKnowledgeVault() {
 }
 
 function trayIcon() {
-  const iconPath = path.join(ROOT, "assets", "wiki-cat.ico");
+  const iconPath = path.join(ROOT, "assets", "obsidian-cat.ico");
   if (fs.existsSync(iconPath)) return iconPath;
   return nativeImage.createFromDataURL(
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAfUlEQVR4AWNABf///z8DJYCJgUIwCkbBqBgFo2BUDKkGkJmZ+f8/AwPDf2QxAwPD/7E0iBqgGQwMDAyMjIx/QGQGEwMDA/8BCRgYGBgY/kcUMjAw/IfqEwMDw38GBgb+QxRkYGBg+I8qNjY2/oMoGBgY/wcAbX4YOnZLwj8AAAAASUVORK5CYII="
@@ -114,7 +114,7 @@ function createWindow() {
 
 function createTray() {
   tray = new Tray(trayIcon());
-  tray.setToolTip("Wiki Cat");
+  tray.setToolTip("Obsidian Cat");
   updateTrayMenu();
 }
 
