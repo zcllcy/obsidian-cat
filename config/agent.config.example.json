@@ -1,26 +1,22 @@
 {
-  "vaultRoot": ".\\demo-vault",
+  "vaultRoot": "",
   "host": "127.0.0.1",
   "port": 4317,
   "intervalSeconds": 300,
   "dryRun": true,
   "model": {
     "providerName": "openai-compatible",
-    "externalConfig": "",
-    "baseUrl": "https://api.openai.com/v1/chat/completions",
+    "baseUrl": "",
     "apiKeyEnv": "OPENAI_API_KEY",
     "apiKey": "",
-    "model": "gpt-4.1-mini",
+    "model": "",
     "temperature": 0.2,
-    "maxTokens": 1800,
-    "timeoutSeconds": 120,
-    "enableThinking": false
+    "maxTokens": 1800
   },
   "ingest": {
     "feedFolder": "ingest",
     "folders": [
-      "inbox",
-      "raw"
+      "inbox"
     ],
     "extensions": [
       ".md",
@@ -28,9 +24,13 @@
       ".pdf"
     ],
     "excludeFolders": [
+      "raw",
       "raw/parsed",
       "raw/mineru-md",
       "raw/assets",
+      "raw/processed_pdfs",
+      "raw/failed_pdfs",
+      "raw/duplicates",
       "wiki/assets",
       "wiki"
     ],
@@ -40,11 +40,15 @@
   "parser": {
     "default": "auto",
     "mineru": {
-      "enabled": false,
-      "apiFile": "",
+      "enabled": true,
+      "apiTokens": "",
+      "rawOutputFolder": "raw/mineru",
       "outputFolder": "raw/parsed",
       "assetsFolder": "wiki/assets",
-      "language": "en",
+      "processedFolder": "raw/processed_pdfs",
+      "failedFolder": "raw/failed_pdfs",
+      "manifestPath": "raw/mineru_manifest.csv",
+      "language": "ch",
       "enableFormula": true,
       "enableTable": true,
       "isOcr": true,
@@ -54,14 +58,33 @@
   "output": {
     "sourceNotesFolder": "wiki/sources",
     "questionsFolder": "wiki/questions",
-    "language": "en-US",
-    "analysisPrompt": "Default to English unless the user chooses another output language. Keep the required Markdown headings unchanged for graph extraction. Detect the source type first: paper, web page, conversation, lab note, dataset, or general note. For papers, extract citation metadata, research problem, materials/systems, methods, data/code, key contributions, evidence chains, figures/tables, equations, limitations, reusable concepts, and follow-up questions. For web pages or conversations, convert them into traceable research notes, concept cards, and action questions. Never invent missing metadata; write Not found in extracted text. Bind every non-obvious claim to a source path, quote-level evidence, figure/table reference, or uncertainty note. Reusable Concepts must be short concept phrases, not full sentences. Follow-Up Questions must be actionable."
+    "language": "zh-CN",
+    "sourceNoteTemplate": "# {{title}}\n\nsource_path: {{sourcePath}}\nStatus: draft\n\n## Citation\n\n## Research Classification\n\n## One-Sentence Takeaway\n\n## Structured Abstract\n\n## Key Contributions\n\n## Methods And Experimental Design\n\n## Results And Evidence\n\n## Figures And Tables\n\n## Important Equations Or Variables\n\n## Limitations And Caveats\n\n## Reusable Concepts\n\n## Links To Existing Vault Topics\n\n## Follow-Up Questions\n\n## Extraction Notes\n",
+    "topicExtractionPolicy": "Source notes go to wiki/sources.\nReusable mechanism concepts go to wiki/concepts.\nMethods, algorithms, and workflows go to wiki/methods.\nConcrete materials and studied systems go to wiki/materials.\nActionable open questions go to wiki/questions.\nDo not create topic notes from status markers such as Not found in extracted text, Needs verification, or Status: uncertain.",
+    "analysisPrompt": "You are Obsidian Cat, a careful research-vault assistant. Write Markdown source notes with the exact English headings required by the vault template. Body content should be Chinese unless the user asks otherwise. Do not invent bibliographic metadata. Missing fields must be written as `Not found in extracted text`. Mark inferred statements as `Status: inferred` and uncertain statements as `Status: uncertain` or `Needs verification`."
   },
-  "maintenance": {
-    "autoRunAfterQueue": true
+  "architecture": {
+    "researchRequirements": "LLM research, phonon research, and their intersection.",
+    "paths": {
+      "raw": "raw",
+      "rawMineru": "raw/mineru",
+      "rawParsed": "raw/parsed",
+      "sources": "wiki/sources",
+      "concepts": "wiki/concepts",
+      "methods": "wiki/methods",
+      "materials": "wiki/materials",
+      "questions": "wiki/questions",
+      "syntheses": "wiki/syntheses",
+      "templates": "templates",
+      "assets": "wiki/assets"
+    }
+  },
+  "runtime": {
+    "stateFolder": "raw/plugin_runtime",
+    "timeoutMs": 600000
   },
   "pet": {
-    "name": "Obsidian Cat",
+    "name": "Mochi",
     "mood": "curious"
   }
 }

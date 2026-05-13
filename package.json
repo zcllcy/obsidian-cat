@@ -1,31 +1,22 @@
 {
   "name": "obsidian-cat",
   "version": "0.1.0",
-  "private": false,
-  "description": "A pixel cat desktop pet that feeds files, text, and links into an LLM-maintained Obsidian vault.",
+  "private": true,
+  "description": "An Obsidian plugin with a bundled desktop cat companion for research-vault ingestion and maintenance.",
   "main": "apps/desktop/main.js",
   "scripts": {
-    "agent": "python src/agent.py",
+    "agent": "node src/node_agent.js",
     "desktop": "electron .",
+    "plugin:check": "node --check obsidian-plugin/obsidian-cat/main.js && node --check src/node_agent.js && node --check apps/desktop/main.js",
+    "plugin:bundle-runtime": "powershell -ExecutionPolicy Bypass -File obsidian-plugin/obsidian-cat/package-runtime.ps1",
     "dist:win": "electron-builder --win nsis"
   },
-  "keywords": [
-    "obsidian",
-    "knowledge-base",
-    "desktop-pet",
-    "rag",
-    "llm",
-    "electron",
-    "wiki"
-  ],
-  "author": "",
-  "license": "MIT",
   "devDependencies": {
     "electron": "^38.0.0",
     "electron-builder": "^26.0.0"
   },
   "build": {
-    "appId": "app.obsidiancat.desktop",
+    "appId": "research.lcy.obsidian-cat",
     "productName": "Obsidian Cat",
     "asar": false,
     "directories": {
@@ -33,16 +24,14 @@
     },
     "files": [
       "apps/**/*",
-      "assets/**/*",
       "public/**/*",
       "src/**/*",
       "config/agent.config.example.json",
       "README.md",
-      "LICENSE"
+      "DESKTOP_APP_NOTES.md"
     ],
     "win": {
       "target": "nsis",
-      "icon": "assets/obsidian-cat.ico",
       "signAndEditExecutable": false
     },
     "nsis": {

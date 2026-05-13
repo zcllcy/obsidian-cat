@@ -1,0 +1,10 @@
+{
+  "id": "obsidian-cat",
+  "name": "Obsidian Cat",
+  "version": "0.1.0",
+  "minAppVersion": "1.5.0",
+  "description": "An Obsidian plugin with a bundled desktop cat companion for research-vault ingestion, source-note drafting, audit, and workflow automation.",
+  "author": "LCY",
+  "authorUrl": "",
+  "isDesktopOnly": true
+}

@@ -1,11 +1,13 @@
 node_modules/
 dist/
 release/
+obsidian-plugin/obsidian-cat/companion/cat-vault-agent/
+obsidian-plugin/obsidian-cat/data.json
 
-logs/
-state/
-demo-vault/
+logs/*.log
+state/*.json
 config/agent.config.json
+obsidian-plugin/obsidian-cat/**/agent.config.json
 
 *.local.json
 *.env
@@ -13,6 +15,3 @@ config/agent.config.json
 
 __pycache__/
 *.pyc
-
-.DS_Store
-Thumbs.db

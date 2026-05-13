@@ -1,26 +1,25 @@
-const { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage, shell } = require("electron");
+const { app, BrowserWindow, Menu, Tray, dialog, ipcMain, nativeImage } = require("electron");
 const fs = require("node:fs");
-const { spawn } = require("node:child_process");
 const path = require("node:path");
+const { startAgentServer, stopAgentServer } = require("../../src/node_agent");
 
 const ROOT = path.resolve(__dirname, "../..");
 const AGENT_URL = "http://127.0.0.1:4317";
 
 let mainWindow;
 let tray;
-let agentProcess;
 let isQuitting = false;
+let topmostTimer;
 
-function resolvePythonCommand() {
-  const candidates = [
-    process.env.WIKI_CAT_PYTHON,
-    process.env.CAT_VAULT_PYTHON,
-    "python"
-  ].filter(Boolean);
-  for (const candidate of candidates) {
-    if (candidate === "python" || fs.existsSync(candidate)) return candidate;
-  }
-  return "python";
+const singleInstanceLock = app.requestSingleInstanceLock();
+if (!singleInstanceLock) {
+  app.quit();
+} else {
+  app.on("second-instance", () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.show();
+    mainWindow.focus();
+  });
 }
 
 async function isAgentOnline() {
@@ -56,7 +55,6 @@ async function chooseKnowledgeVault() {
     properties: ["openDirectory", "createDirectory"]
   });
   if (result.canceled || !result.filePaths.length) {
-    await shell.openExternal(`${AGENT_URL}/#onboarding`);
     return false;
   }
   const vaultRoot = result.filePaths[0];
@@ -65,12 +63,11 @@ async function chooseKnowledgeVault() {
     headers: { "content-type": "application/json; charset=utf-8" },
     body: JSON.stringify({ vaultRoot })
   });
-  await shell.openExternal(`${AGENT_URL}/#onboarding`);
   return true;
 }
 
 function trayIcon() {
-  const iconPath = path.join(ROOT, "assets", "obsidian-cat.ico");
+  const iconPath = path.join(ROOT, "apps", "desktop", "tray.ico");
   if (fs.existsSync(iconPath)) return iconPath;
   return nativeImage.createFromDataURL(
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAfUlEQVR4AWNABf///z8DJYCJgUIwCkbBqBgFo2BUDKkGkJmZ+f8/AwPDf2QxAwPD/7E0iBqgGQwMDAyMjIx/QGQGEwMDA/8BCRgYGBgY/kcUMjAw/IfqEwMDw38GBgb+QxRkYGBg+I8qNjY2/oMoGBgY/wcAbX4YOnZLwj8AAAAASUVORK5CYII="
@@ -78,16 +75,8 @@ function trayIcon() {
 }
 
 async function startAgent() {
-  if (agentProcess) return;
   if (await isAgentOnline()) return;
-  agentProcess = spawn(resolvePythonCommand(), ["src/agent.py"], {
-    cwd: ROOT,
-    windowsHide: true,
-    stdio: "ignore"
-  });
-  agentProcess.on("exit", () => {
-    agentProcess = null;
-  });
+  startAgentServer();
 }
 
 function createWindow() {
@@ -108,8 +97,21 @@ function createWindow() {
     }
   });
 
+  const enforceAlwaysOnTop = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.setAlwaysOnTop(true, "screen-saver");
+    mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  };
+
   mainWindow.loadFile(path.join(ROOT, "public", "pet.html"));
-  mainWindow.once("ready-to-show", () => mainWindow.show());
+  mainWindow.once("ready-to-show", () => {
+    enforceAlwaysOnTop();
+    mainWindow.show();
+  });
+  mainWindow.on("show", enforceAlwaysOnTop);
+  mainWindow.on("focus", enforceAlwaysOnTop);
+  mainWindow.on("blur", enforceAlwaysOnTop);
+  topmostTimer = setInterval(enforceAlwaysOnTop, 5000);
 }
 
 function createTray() {
@@ -124,8 +126,6 @@ function updateTrayMenu() {
     Menu.buildFromTemplate([
       { label: "Show Cat", click: () => mainWindow?.show() },
       { label: "Hide Cat", click: () => mainWindow?.hide() },
-      { label: "Open Home", click: () => shell.openExternal(AGENT_URL) },
-      { label: "Open Settings", click: () => shell.openExternal(`${AGENT_URL}/#settings`) },
       { label: "Choose Knowledge Vault...", click: () => chooseKnowledgeVault() },
       { label: "Run Queue Now", click: () => fetch(`${AGENT_URL}/api/run`, { method: "POST" }) },
       {
@@ -200,17 +200,16 @@ ipcMain.handle("feed-text", async (_event, payload) => {
   return await response.json();
 });
 
-ipcMain.handle("open-console", () => shell.openExternal(AGENT_URL));
+ipcMain.handle("open-console", () => ({ ok: true, message: "Configure Obsidian Cat from the Obsidian plugin settings page." }));
 
-app.whenReady().then(async () => {
-  await startAgent();
-  await waitForAgentOnline();
-  createWindow();
-  createTray();
-  getVaultStatus().then((status) => {
-    if (!status.ready) shell.openExternal(`${AGENT_URL}/#onboarding`);
+if (singleInstanceLock) {
+  app.whenReady().then(async () => {
+    await startAgent();
+    await waitForAgentOnline();
+    createWindow();
+    createTray();
   });
-});
+}
 
 app.on("window-all-closed", (event) => {
   event.preventDefault();
@@ -218,5 +217,6 @@ app.on("window-all-closed", (event) => {
 });
 
 app.on("before-quit", () => {
-  if (agentProcess) agentProcess.kill();
+  if (topmostTimer) clearInterval(topmostTimer);
+  stopAgentServer();
 });

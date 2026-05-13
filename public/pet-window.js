@@ -10,6 +10,8 @@ let bubbleTimer = null;
 let idleBubbleTimer = null;
 let lastIdleBubbleAt = 0;
 let modelLineInFlight = false;
+let lastErrorKey = "";
+let suppressErrorsUntil = 0;
 
 const text = {
   idle: "\u62d6\u6587\u732e\u7ed9\u6211",
@@ -22,7 +24,7 @@ const text = {
   feedFailed: "\u6295\u5582\u5931\u8d25",
   urlQueued: "\u7f51\u9875\u5df2\u5165\u961f",
   urlFailed: "\u7f51\u9875\u6293\u53d6\u5931\u8d25",
-  textQueued: "\u6587\u672c\u5df2\u5165\u961f",
+  textQueued: "\u672f\u8bed\u5361\u7247\u5df2\u5165\u5e93",
   textFailed: "\u6587\u672c\u5165\u5e93\u5931\u8d25",
   queue: "\u961f\u5217"
 };
@@ -142,6 +144,11 @@ async function refresh() {
     if (status.queueLength > 0) {
       say(`${text.queue}: ${status.queueLength}`, { duration: 3600 });
     } else if (status.errors?.length) {
+      if (Date.now() < suppressErrorsUntil) return;
+      const latestError = status.errors[0];
+      const errorKey = `${latestError?.time || ""}|${latestError?.filePath || ""}|${latestError?.message || ""}`;
+      if (errorKey === lastErrorKey) return;
+      lastErrorKey = errorKey;
       say(text.failed, { duration: 5200 });
     }
   } catch {
@@ -155,8 +162,18 @@ async function feed(files) {
   say(`${text.queued}: ${files.length}`);
   queueFill.style.width = "36%";
   try {
-    await window.catVaultAgent.feedFiles(files);
+    const results = await window.catVaultAgent.feedFiles(files);
+    const queuedCount = results.filter((item) => item?.ok && item?.queued).length;
+    suppressErrorsUntil = Date.now() + 5000;
+    if (!queuedCount) {
+      say(text.feedFailed);
+      queueFill.style.width = "100%";
+      setTimeout(refresh, 300);
+      return;
+    }
+    say(files.length === 1 ? text.queued : `${text.queued}: ${queuedCount}/${files.length}`);
     await refresh();
+    setTimeout(refresh, 1200);
   } catch {
     say(text.feedFailed);
     queueFill.style.width = "100%";
@@ -190,23 +207,21 @@ async function feedText(value) {
   }
 }
 
-for (const name of ["dragenter", "dragover"]) {
-  dropZone.addEventListener(name, (event) => {
-    event.preventDefault();
-    dropZone.classList.add("dragging");
-    say(text.drop);
-    queueFill.style.width = "48%";
-  });
+function showDropTarget(event) {
+  event.preventDefault();
+  dropZone.classList.add("dragging");
+  say(text.drop);
+  queueFill.style.width = "48%";
 }
 
-for (const name of ["dragleave", "drop"]) {
-  dropZone.addEventListener(name, (event) => {
-    event.preventDefault();
-    dropZone.classList.remove("dragging");
-  });
+function hideDropTarget(event) {
+  event.preventDefault();
+  dropZone.classList.remove("dragging");
 }
 
-dropZone.addEventListener("drop", (event) => {
+function handleDrop(event) {
+  event.preventDefault();
+  dropZone.classList.remove("dragging");
   const files = [...event.dataTransfer.files];
   if (files.length) {
     feed(files);
@@ -218,7 +233,18 @@ dropZone.addEventListener("drop", (event) => {
     return;
   }
   feedUrl(extractUrl(event));
-});
+}
+
+for (const name of ["dragenter", "dragover"]) {
+  window.addEventListener(name, showDropTarget);
+}
+
+for (const name of ["dragleave", "drop"]) {
+  window.addEventListener(name, hideDropTarget);
+}
+
+window.addEventListener("drop", handleDrop);
+dropZone.addEventListener("drop", handleDrop);
 
 refresh();
 scheduleIdleBubble();

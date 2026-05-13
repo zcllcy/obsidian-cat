@@ -54,6 +54,7 @@ body {
   image-rendering: pixelated;
   transition: transform 140ms steps(2), filter 140ms steps(2);
   animation: idle 1.4s steps(2) infinite;
+  -webkit-app-region: no-drag;
 }
 
 .ear,
