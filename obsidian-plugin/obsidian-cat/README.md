@@ -39,6 +39,7 @@ Daily settings are visible directly. Advanced only keeps runtime path details.
 See:
 
 ```text
+docs/中文快速开始.md
 docs/USAGE.md
 ```
 

@@ -27,7 +27,9 @@ Obsidian Cat is an Obsidian plugin for research-vault ingestion, PDF parsing, an
 
 ## Usage
 
-See the full guide: [docs/USAGE.md](docs/USAGE.md).
+Chinese quick start: [docs/中文快速开始.md](docs/中文快速开始.md)
+
+Full guide: [docs/USAGE.md](docs/USAGE.md)
 
 ## Development
 
