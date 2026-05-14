@@ -482,6 +482,7 @@ async function processJob(config, job) {
   }
   fs.writeFileSync(outputPath, markdown.trim() + "\n", "utf8");
   promoteTopicsFromSourceNote(config, outputPath);
+  updateLiteratureIndex(config);
 
   const processed = loadProcessed();
   processed.processed[job.filePath] = job.hash;
@@ -1014,6 +1015,37 @@ function promoteTopicsFromSourceNote(config, sourceNotePath) {
   const questionTitles = uniqueTopicTitles(questions);
   for (const title of questionTitles) writeTopicNote(vault, config.architecture?.paths?.questions || "wiki/questions", title, "question", sourceRel);
   updateOpenQuestions(vault, config.architecture?.paths?.questions || "wiki/questions", questionTitles);
+}
+
+function updateLiteratureIndex(config) {
+  const vault = path.resolve(config.vaultRoot);
+  const sourcesDir = path.resolve(vault, config.output?.sourceNotesFolder || "wiki/sources");
+  const indexPath = path.join(vault, "wiki", "Literature Index.md");
+  ensureDir(path.dirname(indexPath));
+  const files = walk(sourcesDir).filter((file) => file.endsWith(".md"));
+  const items = files
+    .map((file) => {
+      const text = fs.readFileSync(file, "utf8");
+      const title = firstMarkdownTitle(text) || path.basename(file, ".md");
+      return {
+        title: title.trim(),
+        target: rel(vault, file).replace(/\.md$/i, "")
+      };
+    })
+    .filter((item) => item.title && item.target)
+    .sort((a, b) => a.title.localeCompare(b.title, "en", { sensitivity: "base" }));
+  const lines = [
+    "# Literature Index",
+    "",
+    "Automatically updated list of processed literature notes.",
+    "",
+    "## Papers",
+    "",
+    ...items.map((item) => `- [[${item.target}|${item.title}]]`),
+    ""
+  ];
+  fs.writeFileSync(indexPath, lines.join("\n"), "utf8");
+  return indexPath;
 }
 
 function sectionText(text, heading) {
