@@ -1,57 +1,56 @@
 # Obsidian Cat
 
-Obsidian Cat is an Obsidian plugin for LLM-assisted research-vault maintenance with a bundled desktop cat companion.
+Obsidian Cat is an Obsidian plugin for LLM-driven literature management with a bundled desktop cat companion.
 
-The desktop cat experience is preserved: when Obsidian starts, the plugin can launch the packaged `Obsidian Cat.exe`, and the cat appears on the desktop for drag-and-drop feeding. Configuration now lives in the native Obsidian plugin settings page instead of a web console/onboarding page.
+Drop a PDF onto the desktop cat, and the plugin can parse it with MinerU, extract figures into `wiki/assets/`, generate a structured source note in `wiki/sources/`, and update the vault's literature index.
 
-## Current Features
+## Highlights
 
-- Auto-start the bundled desktop cat runtime on Obsidian launch.
-- Reuse an existing desktop cat when Obsidian reopens.
-- Switch the native settings page between Chinese and English.
-- Switch source-note body language between Chinese and English.
-- Check the cat backend at `http://127.0.0.1:4317/api/status`.
-- Open an Obsidian Cat task center from the ribbon.
-- Configure Model API, MinerU API tokens, wiki architecture, and paths from Obsidian settings.
-- Initialize or repair the vault structure without overwriting existing raw/wiki content.
-- Draft a source note from the current parsed Markdown file.
-- Audit source notes, topic titles, duplicate topics, and broken wiki links.
-- Write audit reports to `wiki/syntheses/Vault Pipeline Audit.md`.
-- Run without Python or a separate installer.
-- Preserve paper-title source note filenames and the existing research-vault source-note schema with Key Figure Gallery support.
+- Native Obsidian settings page.
+- Chinese and English interface switching.
+- Chinese or English source-note body language.
+- OpenAI-compatible model API settings.
+- MinerU PDF parsing settings.
+- Bundled desktop cat companion.
+- Drag-and-drop paper feeding.
+- Paper-title source-note filenames.
+- Key Figure Gallery support.
+- Automatic `wiki/Literature Index.md` updates.
 
-## Settings Page
+## Quick Install
 
-The settings page is organized into five sections:
-
-- Quick Start
-- Model API
-- MinerU API
-- Wiki Architecture
-- Advanced
-
-Daily settings are visible directly. Advanced only keeps runtime path details.
-
-`Interface language` changes the plugin settings UI. `Source-note body language` changes LLM-generated source note body text while keeping template headings in English.
-
-## Full Tutorial
-
-See:
+1. Copy this `obsidian-cat` folder to:
 
 ```text
-docs/中文快速开始.md
-docs/USAGE.md
+<your-vault>/.obsidian/plugins/obsidian-cat
 ```
 
-## Bundled Runtime
+2. Enable `Obsidian Cat` in Obsidian community plugins.
+3. Open `Settings -> Obsidian Cat`.
+4. Click `Initialize`.
+5. Configure Model API and MinerU tokens.
+6. Click `Sync`.
+7. Click `Start Desktop Cat`, then drag a PDF onto the cat.
 
-The plugin includes a portable companion runtime:
+## Default Output
 
 ```text
-companion/cat-vault-agent/Obsidian Cat.exe
+ingest/                  files dropped onto the cat
+raw/parsed/              parsed Markdown
+raw/processed_pdfs/      processed PDFs
+wiki/assets/             extracted figures
+wiki/sources/            literature notes
+wiki/concepts/           reusable concepts
+wiki/methods/            methods and workflows
+wiki/materials/          materials and systems
+wiki/questions/          follow-up questions
+wiki/Literature Index.md literature index
 ```
 
-This means users do not need to run the old standalone installer. Installing the plugin folder also installs the desktop cat runtime.
+## Docs
+
+- `docs/QUICKSTART.zh-CN.md`
+- `docs/USAGE.md`
 
 ## Commands
 
@@ -61,8 +60,11 @@ This means users do not need to run the old standalone installer. Installing the
 - `Obsidian Cat: Draft Source Note From Current Parsed Markdown`
 - `Obsidian Cat: Audit Vault`
 
-## Notes
+## Requirements
 
-- The local HTTP API is retained for the desktop cat and plugin internals, but the web console is not exposed as the primary UI.
-- The plugin is desktop-only because it launches local processes and bundled executables.
-- Core runtime features do not require Python.
+- Obsidian desktop app.
+- Windows for the bundled desktop cat runtime.
+- MinerU token for PDF parsing.
+- OpenAI-compatible model API for full LLM source-note generation.
+
+Core plugin features do not require Python.
